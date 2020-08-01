@@ -5,8 +5,10 @@
 \title{Residency Analysis}
 \usage{
 residency(
-  tz,
+  tz = NULL,
   sections,
+  section.order = NULL,
+  datapack = NULL,
   max.interval = 60,
   minimum.detections = 2,
   start.time = NULL,
@@ -23,20 +25,26 @@ residency(
   report = FALSE,
   auto.open = TRUE,
   discard.orphans = FALSE,
+  discard.first = NULL,
   save.detections = FALSE,
   section.minimum = 2,
   replicates = NULL,
   GUI = c("needed", "always", "never"),
-  print.releases = TRUE
+  print.releases = TRUE,
+  plot.detections.by = c("stations", "arrays")
 )
 }
 \arguments{
 \item{tz}{The time zone of the study area. Must match one of the values
 present in \code{\link[base]{timezones}}.}
 
-\item{sections}{The sections in which the study area is divided. Must be
-coincident with the names given to the arrays. See the vignettes for more
-details.}
+\item{sections}{DEPRECATED - list the sections in the spatial input instead.}
+
+\item{section.order}{A vector containing the order by which sections should
+be aligned in the results.}
+
+\item{datapack}{A data bundle pre-compiled through the function \code{\link{preload}}.
+May be used to run actel analyses based on R objects, rather than input files.}
 
 \item{max.interval}{The number of minutes that must pass between detections
 for a new event to be created. Defaults to 60.}
@@ -91,7 +99,7 @@ detection data before any analyses are performed. Intended to be used if
 stray tags from a different code space but with the same signal as a target
 tag are detected in the study area.}
 
-\item{override}{A vector of tags for which the user intends to manually
+\item{override}{A vector of signals for which the user intends to manually
 define which movement events are valid and invalid.}
 
 \item{report}{Logical. Should an HTML report be created at the end of the
@@ -107,6 +115,10 @@ function terminates.}
 \item{discard.orphans}{Logical: Should actel automatically discard
 detections that do not fall within receiver deployment periods, or that
 were recorded before the respective fish were released?}
+
+\item{discard.first}{A threshold amount of time (in hours) that must pass after
+release for the respective detections to be valid. Set to 0 to discard only
+the release-to-first-detection calculations.}
 
 \item{save.detections}{Logical: Should the processed detections be saved for
 future runs?}
@@ -128,6 +140,9 @@ prompted to open that file and examine it. Defaults to "needed".}
 
 \item{print.releases}{Logical: Should the release sites be printed in the
 study area diagrams?}
+
+\item{plot.detections.by}{The type of y axis desired for the individual
+detection plots. One of "stations" (default) or "arrays".}
 }
 \value{
 A list containing:
@@ -212,11 +227,11 @@ exampleWorkspace("exampleWorkspace")
 # Move your R session into the example workspace
 setwd("exampleWorkspace")
 
-# run the residency analysis. Ensure the tz argument 
+# run the residency analysis. Ensure the tz argument
 # matches the time zone of the study area and that the
-# sections match your array names. The line below works 
+# sections match your array names. The line below works
 # for the example data.
-results <- residency(tz = "Europe/Copenhagen", sections = c("River", "Fjord", "Sea"))
+results <- residency(tz = "Europe/Copenhagen")
 
 # to obtain an HTML report, run the analysis with report = TRUE
 

@@ -8,12 +8,11 @@ assembleTimetable(
   secmoves,
   valid.moves,
   all.moves,
-  sections,
+  spatial,
   arrays,
   bio,
   tz,
   dist.mat,
-  invalid.dist,
   speed.method,
   if.last.skip.section,
   success.arrays
@@ -26,10 +25,6 @@ assembleTimetable(
 
 \item{all.moves}{all array movements}
 
-\item{sections}{The sections in which the study area is divided. Must be
-coincident with the names given to the arrays. See the vignettes for more
-details.}
-
 \item{arrays}{A list containing information for each array.}
 
 \item{bio}{A table with the tags and biometrics of the studied fish.}
@@ -38,8 +33,6 @@ details.}
 present in \code{\link[base]{timezones}}.}
 
 \item{dist.mat}{A matrix of the distances between the deployed ALS.}
-
-\item{invalid.dist}{Whether or not the distance matrix supplied is valid for the study area.}
 
 \item{speed.method}{Can take two forms: 'last to first' or 'last to last'.
 If 'last to first' (default), the last detection on the previous array is matched

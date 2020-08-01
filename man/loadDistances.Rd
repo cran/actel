@@ -4,17 +4,15 @@
 \alias{loadDistances}
 \title{Load distances matrix}
 \usage{
-loadDistances(spatial)
+loadDistances(input = "distances.csv", spatial)
 }
 \arguments{
+\item{input}{A matrix of distances, to be loaded rather than a file.}
+
 \item{spatial}{A list of spatial objects in the study area.}
 }
 \value{
-a list containing:
-\itemize{
-\item \code{dist.mat}: A matrix of the distances (in metres) between stations (if a 'distances.csv' is present)
-\item \code{invalid.dist}: Logical: Is the distances matrix valid?
-}
+A matrix of the distances (in metres) between stations (if a 'distances.csv' is present)
 }
 \description{
 Load distances matrix

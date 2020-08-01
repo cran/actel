@@ -1,4 +1,6 @@
 skip_on_cran()
+oldtz <- Sys.getenv('TZ', unset = NA)
+Sys.setenv(TZ = 'UTC')
 
 tests.home <- getwd()
 setwd(tempdir())
@@ -13,7 +15,7 @@ detections <- loadDetections(start.time = NULL, stop.time = NULL, tz = "Europe/C
 unlink("detections", recursive = TRUE)
 
 write.csv(example.biometrics, "biometrics.csv", row.names = FALSE)
-bio <- loadBio(file = "biometrics.csv", tz = "Europe/Copenhagen")
+bio <- loadBio(input = "biometrics.csv", tz = "Europe/Copenhagen")
 file.remove("biometrics.csv")
 
 test_that("splitDetections' output is as expected", {
@@ -22,7 +24,6 @@ test_that("splitDetections' output is as expected", {
 	expect_true(any(grepl("Transmitter", colnames(output$bio))))
 	expect_equal(length(output$detections), sum(!is.na(output$bio$Transmitter)))
 })
-# n
 
 test_that("splitDetections excludes tags as requested.", {
 	expect_message(output <- splitDetections(detections = detections, bio = bio, exclude.tags = "R64K-4451"),
@@ -34,7 +35,7 @@ test_that("splitDetections excludes tags as requested.", {
 
 test_that("splitDetections stops the analysis if no detections match the target tags", {
 	write.csv(example.biometrics[1, ], "biometrics.csv", row.names = FALSE)
-	bio <- loadBio(file = "biometrics.csv", tz = "Europe/Copenhagen")
+	bio <- loadBio(input = "biometrics.csv", tz = "Europe/Copenhagen")
 	file.remove("biometrics.csv")
 	expect_error(splitDetections(detections = detections, bio = bio),
 		"No detections were found in the input data which matched the target signals.", fixed = TRUE)
@@ -55,7 +56,7 @@ test_that("splitDetections can handle multi-sensor tags", {
 	xbio$Signal[1] <- "4453|4454"
 	tryCatch(output <- splitDetections(detections = detections, bio = xbio), warning = function(w) stop("A warning was produced where it should not have been.", call = FALSE))
 	expect_equal(output$bio$Transmitter[1], "R64K-4453")
-	expect_equal(unique(output$detections.list[[1]]$Signal), c("4454", "4453"))
+	expect_equal(unique(output$detections.list[[1]]$Signal), c(4454, 4453))
 	expect_equal(names(output$detections.list)[1], "R64K-4453")
 
 	xbio$Sensor.unit <- ""
@@ -96,4 +97,7 @@ test_that("splitDetections can handle multi-sensor tags", {
 # n
 
 setwd(tests.home)
+
+if (is.na(oldtz)) Sys.unsetenv("TZ") else Sys.setenv(TZ = oldtz)
+
 rm(list = ls())

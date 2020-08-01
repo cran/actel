@@ -35,7 +35,8 @@ spatial <- data.frame(
   Station.name = c("River East", "River West", "Estuary", "Site A", "Site B"),
   Latitude = c(8.411, 8.521, 8.402, 8.442, 8.442),
   Longitude = c(40.411, 40.521, 40.402, 40.442, 40.442),
-  Array = c("River1", "River1", "River2", "River1", "River2"),
+  Section = c("River", "River", "River", "", ""),
+  Array = c("A1", "A1", "A3", "A1", "A2"),
   Type = c("Hydrophone", "Hydrophone", "Hydrophone", "Release", "Release"))
 
 knitr::kable(spatial)

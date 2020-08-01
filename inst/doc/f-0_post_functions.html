@@ -12,7 +12,7 @@
 
 <meta name="author" content="Hugo Flávio" />
 
-<meta name="date" content="2020-06-06" />
+<meta name="date" content="2020-08-01" />
 
 <title>6.0) Beyond the three main analyses</title>
 
@@ -301,7 +301,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">6.0) Beyond the three main analyses</h1>
 <h4 class="author">Hugo Flávio</h4>
-<h4 class="date">2020-06-06</h4>
+<h4 class="date">2020-08-01</h4>
 
 
 
@@ -312,6 +312,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <ol style="list-style-type: decimal">
 <li><a href="a-1_study_area.html">Structuring the study area</a></li>
 <li><a href="a-2_distances_matrix.html">Creating a distances matrix</a></li>
+<li><a href="a-3_preload.html">The preload() function</a></li>
 </ol></li>
 <li><a href="b-0_explore.html">explore()</a>
 <ol style="list-style-type: decimal">
@@ -332,7 +333,6 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </ol></li>
 <li><a href="e-0_manual_mode.html">Manual mode</a></li>
 <li><a href="f-0_post_functions.html"><strong>Beyond the three main analyses</strong></a></li>
-<li><a href="g-0_messages.html">Errors and messages</a></li>
 </ol>
 </div>
 <div id="expanding-on-what-actel-can-give-you" class="section level2">
@@ -453,7 +453,7 @@ This is a great R package, so make sure to go check it out!
 </div>
 <div id="drawing-personalised-detection-plots" class="section level2">
 <h2>Drawing personalised detection plots</h2>
-<p>Detection plots provide a lot of information. However, the default plots printed in the reports may be to small to analyse, or perhaps you would like to edit them to use in a presentation or paper. <code>plotMoves</code> is the function you are looking for.</p>
+<p>Detection plots provide a lot of information. However, the default plots printed in the reports may be to small to analyse, or perhaps you would like to edit them to use in a presentation or paper. <code>plotMoves()</code> is the function you are looking for.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" title="1"><span class="co"># Assuming you saved the output of an actel analysis as &#39;results&#39;,</span></a>
 <a class="sourceLine" id="cb8-2" title="2"><span class="co"># you can then plot the detections for single individuals. Imagine</span></a>
 <a class="sourceLine" id="cb8-3" title="3"><span class="co"># you want to see tag &#39;R64K-1995&#39;. You can run:</span></a>
@@ -479,6 +479,54 @@ This is a great R package, so make sure to go check it out!
 <a class="sourceLine" id="cb8-23" title="23">p</a>
 <a class="sourceLine" id="cb8-24" title="24"></a>
 <a class="sourceLine" id="cb8-25" title="25"><span class="co"># Of course, you can also save your new plots using ggsave.</span></a></code></pre></div>
+</div>
+<div id="extracting-detailed-array-level-movement-speeds" class="section level2">
+<h2>Extracting detailed array-level movement speeds</h2>
+<p>If you have included a valid distances matrix in your analysis, then there is a lot of valuable information scattered throughout the fish movements. While this information is summarised at the section level in the <code>status.df</code> object (for <code>migration()</code> and <code>residency()</code> analyses), maybe you would like to have a look at the event-to-event values. To avoid having to go through each movement table individually, you can use the function <code>getSpeeds()</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" title="1"><span class="co"># As usual, lets assume you saved the output of an actel analysis as &#39;results&#39;.</span></a>
+<a class="sourceLine" id="cb9-2" title="2"></a>
+<a class="sourceLine" id="cb9-3" title="3"><span class="co"># Running getSpeeds on the results will return all the recorded speeds, for</span></a>
+<a class="sourceLine" id="cb9-4" title="4"><span class="co"># every fish.</span></a>
+<a class="sourceLine" id="cb9-5" title="5"><span class="kw">getSpeeds</span>(results)</a>
+<a class="sourceLine" id="cb9-6" title="6"></a>
+<a class="sourceLine" id="cb9-7" title="7"><span class="co"># However, you can trim this output by using the remaining arguments in getSpeeds().</span></a>
+<a class="sourceLine" id="cb9-8" title="8"></a>
+<a class="sourceLine" id="cb9-9" title="9"><span class="co"># For example, return only the speeds between neighbouring arrays by using:</span></a>
+<a class="sourceLine" id="cb9-10" title="10"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb9-11" title="11"></a>
+<a class="sourceLine" id="cb9-12" title="12"><span class="co"># This will only return speeds when the respective movement did not imply</span></a>
+<a class="sourceLine" id="cb9-13" title="13"><span class="co"># skipping an ALS array.</span></a>
+<a class="sourceLine" id="cb9-14" title="14"></a>
+<a class="sourceLine" id="cb9-15" title="15"><span class="co"># You can further trim these results by choosing only events in a specific direction:</span></a>
+<a class="sourceLine" id="cb9-16" title="16"></a>
+<a class="sourceLine" id="cb9-17" title="17"><span class="co"># To display only speeds in a forward direction (as specified by the study area structure)</span></a>
+<a class="sourceLine" id="cb9-18" title="18"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;forward&quot;</span>)</a>
+<a class="sourceLine" id="cb9-19" title="19"></a>
+<a class="sourceLine" id="cb9-20" title="20"><span class="co"># Or only in the backwards direction</span></a>
+<a class="sourceLine" id="cb9-21" title="21"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;backward&quot;</span>)</a>
+<a class="sourceLine" id="cb9-22" title="22"></a>
+<a class="sourceLine" id="cb9-23" title="23"><span class="co"># The default is &quot;all&quot;</span></a>
+<a class="sourceLine" id="cb9-24" title="24"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>)</a>
+<a class="sourceLine" id="cb9-25" title="25"></a>
+<a class="sourceLine" id="cb9-26" title="26"><span class="co"># A little side note on directions: </span></a>
+<a class="sourceLine" id="cb9-27" title="27"><span class="co"># If you stated in the spatial.txt file that &quot;A -- B&quot;, then A is considered to </span></a>
+<a class="sourceLine" id="cb9-28" title="28"><span class="co"># come before B, and thus a movement from A to B is a forward movement.</span></a>
+<a class="sourceLine" id="cb9-29" title="29"><span class="co"># Consequently a movement from B to A is considered a backwards movement.</span></a>
+<a class="sourceLine" id="cb9-30" title="30"><span class="co">#</span></a>
+<a class="sourceLine" id="cb9-31" title="31"><span class="co"># Note that movements between parallel arrays are not forward nor backward,</span></a>
+<a class="sourceLine" id="cb9-32" title="32"><span class="co"># and the respective speeds will only be displayed if type = &quot;all&quot;.</span></a>
+<a class="sourceLine" id="cb9-33" title="33"></a>
+<a class="sourceLine" id="cb9-34" title="34"><span class="co"># Finally, you can choose how many events per fish you want to see:</span></a>
+<a class="sourceLine" id="cb9-35" title="35"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>, <span class="dt">n.events =</span> <span class="st">&quot;first&quot;</span>) <span class="co"># default</span></a>
+<a class="sourceLine" id="cb9-36" title="36"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>, <span class="dt">n.events =</span> <span class="st">&quot;all&quot;</span>)</a>
+<a class="sourceLine" id="cb9-37" title="37"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>, <span class="dt">n.events =</span> <span class="st">&quot;last&quot;</span>)</a>
+<a class="sourceLine" id="cb9-38" title="38"></a>
+<a class="sourceLine" id="cb9-39" title="39"><span class="co"># The n.events controls how many instances of a specific movement event you would like to see.</span></a>
+<a class="sourceLine" id="cb9-40" title="40"><span class="co"># If a fish moved twice from A to B, &quot;first&quot; will return only the first speed, &quot;last&quot; will</span></a>
+<a class="sourceLine" id="cb9-41" title="41"><span class="co"># return only the last speed, and &quot;all&quot; will return both.</span></a>
+<a class="sourceLine" id="cb9-42" title="42"><span class="co"># Note that moving from A to B is not the same as moving from B to A, and both will be treated</span></a>
+<a class="sourceLine" id="cb9-43" title="43"><span class="co"># separately by getSpeeds.</span></a></code></pre></div>
+<p>Because speeds have many underlying variables (from where, to where, which fish, etc.), there is no pre-made plot function for speeds. However, the output of <code>getSpeeds()</code> is structured in a way that should make it easy for you to jump to ggplot2 and start drawing your plots, your way :)</p>
 </div>
 <div id="what-would-you-like-to-see-here" class="section level2">
 <h2>What would you like to see here?</h2>

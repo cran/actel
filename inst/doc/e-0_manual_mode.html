@@ -12,7 +12,7 @@
 
 <meta name="author" content="Hugo Flávio" />
 
-<meta name="date" content="2020-06-06" />
+<meta name="date" content="2020-08-01" />
 
 <title>5.0) Manual mode</title>
 
@@ -215,7 +215,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">5.0) Manual mode</h1>
 <h4 class="author">Hugo Flávio</h4>
-<h4 class="date">2020-06-06</h4>
+<h4 class="date">2020-08-01</h4>
 
 
 
@@ -226,6 +226,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <ol style="list-style-type: decimal">
 <li><a href="a-1_study_area.html">Structuring the study area</a></li>
 <li><a href="a-2_distances_matrix.html">Creating a distances matrix</a></li>
+<li><a href="a-3_preload.html">The preload() function</a></li>
 </ol></li>
 <li><a href="b-0_explore.html">explore()</a>
 <ol style="list-style-type: decimal">
@@ -246,21 +247,20 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </ol></li>
 <li><a href="e-0_manual_mode.html"><strong>Manual mode</strong></a></li>
 <li><a href="f-0_post_functions.html">Beyond the three main analyses</a></li>
-<li><a href="g-0_messages.html">Errors and messages</a></li>
 </ol>
 </div>
 <div id="refining-the-results" class="section level2">
 <h2>Refining the results</h2>
 <p>As you inspect your results, you may find out that you would rather change a specific outcome. For example, perhaps a detection was discarded that is actually relevant, or there are detections that clearly match a predator’s behaviour rather than your fish and actel didn’t pick that up.</p>
-<p>When this happens, it is time to take the lead and tell actel what you want to do, by triggering the manual processing mode. To do this, simply add the transmitters that you want to deal with manually in the <code>override</code> argument (e.g. <code>override = c(&quot;R64K-1234&quot;, &quot;R64K-1405&quot;)</code>).</p>
-<p>When you list tags in <code>override</code>, actel will bypass all of the normal checks and give you full control over movement validity. You will know this is happening when you see the following message:</p>
+<p>When this happens, it is time to take the lead and tell actel what you want to do, by triggering the manual processing mode. To do this, simply add the signals that you want to deal with manually in the <code>override</code> argument (e.g. <code>override = c(1234, 1405)</code>).</p>
+<p>When you list signals in <code>override</code>, actel will bypass all of the normal checks and give you full control over movement validity. You will know this is happening when you see the following message:</p>
 <pre><code>----------------------------
 M: Override has been triggered for fish R64K-1234. Entering full manual mode.
 Opening movements list for inspection.
 
 [...]
 
-Would you like to render any movement event invalid?(y/N/comment) </code></pre>
+Would you like to render any movement event invalid?(y/n/comment) </code></pre>
 <p>You must then decide whether or not you want to invalidate any events and which events you would like to be invalidated. Once you have finished your edits, actel will automatically terminate manual mode and proceed with the analysis.</p>
 </div>
 <div id="actel-report-with-overridden-fish" class="section level2">

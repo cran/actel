@@ -10,7 +10,7 @@ loadStudyData(
   start.time,
   stop.time,
   save.detections = FALSE,
-  sections = NULL,
+  section.order = NULL,
   exclude.tags,
   disregard.parallels = TRUE,
   discard.orphans = FALSE
@@ -20,7 +20,7 @@ loadStudyData(
 \item{tz}{The time zone of the study area. Must match one of the values
 present in \code{\link[base]{timezones}}.}
 
-\item{override}{A vector of tags for which the user intends to manually
+\item{override}{A vector of signals for which the user intends to manually
 define which movement events are valid and invalid.}
 
 \item{start.time}{Detection data prior to the timestamp set in
@@ -34,9 +34,8 @@ the analysis.}
 \item{save.detections}{Logical: Should the processed detections be saved for
 future runs?}
 
-\item{sections}{The sections in which the study area is divided. Must be
-coincident with the names given to the arrays. See the vignettes for more
-details.}
+\item{section.order}{A vector containing the order by which sections should
+be aligned in the results.}
 
 \item{exclude.tags}{A vector of tags that should be excluded from the
 detection data before any analyses are performed. Intended to be used if
@@ -61,7 +60,6 @@ A list containing:
 \item \code{arrays}: A list containing detailed information on the arrays
 \item \code{dotmat}: A matrix of the distance (in number of arrays) between pairs of arrays
 \item \code{dist.mat}: A matrix of the distances (in metres) between stations (if a 'distances.csv' is present)
-\item \code{invalid.dist}: Logical: Is the distances matrix valid?
 \item \code{detections.list}: A list containing the detection data for each fish
 \item \code{paths}: A list of the all array paths between each pair of arrays.
 }

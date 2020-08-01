@@ -1,13 +1,13 @@
 #' Generate default ggplot colours
-#' 
+#'
 #' Copied from: \url{https://stackoverflow.com/questions/8197559/emulate-ggplot2-default-color-palette}.
-#' 
+#'
 #' @param n The number of colours to be generated
-#' 
+#'
 #' @return a vector of colours with the same length as n
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 gg_colour_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   grDevices::hcl(h = hues, l = 65, c = 100)[1:n]
@@ -21,14 +21,16 @@ gg_colour_hue <- function(n) {
 #' @param dot a dot data frame
 #' @param overall.CJS a single CJS with all the groups and release sites merged
 #' @param status.df A data frame with the final migration results
-#'  
+#'
 #' @return No return value, called to plot and save graphic.
-#' 
+#'
 #' @keywords internal
-#' 
-printProgression <- function(dot, sections, overall.CJS, spatial, status.df, print.releases) {
+#'
+printProgression <- function(dot, overall.CJS, spatial, status.df, print.releases) {
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
   names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
+
+  sections <- names(spatial$array.order)
 
   # Prepare node data frame
   diagram_nodes <- data.frame(
@@ -36,23 +38,28 @@ printProgression <- function(dot, sections, overall.CJS, spatial, status.df, pri
   original.label = unique(unlist(dot[, c(1, 3)])),
   label = unique(unlist(dot[, c(1, 3)])),
   stringsAsFactors = FALSE)
-  if (length(sections) <= length(cbPalette)) {
+
+  if (length(sections) > 1) {
+    if (length(sections) <= length(cbPalette))
+      to.fill <- cbPalette
+    else
+      to.fill <- gg_colour_hue(length(sections))
+
     diagram_nodes$fillcolor <- rep(NA_character_, nrow(diagram_nodes))
+    
     for (i in 1:length(sections)) {
-       diagram_nodes$fillcolor[grepl(sections[i], diagram_nodes$label)] <- cbPalette[i]
+      arrays <- spatial$array.order[[i]]
+      diagram_nodes$fillcolor[matchl(diagram_nodes$label, arrays)] <- to.fill[i]
     }
   } else {
-    diagram_nodes$fillcolor <- rep(NA_character_, nrow(diagram_nodes))
-    new.fill <- gg_colour_hue(length(sections))
-    for (i in 1:length(sections)) {
-       diagram_nodes$fillcolor[grepl(sections[i], diagram_nodes$label)] <- new.fill[i]
-    }
+    diagram_nodes$fillcolor <- rep("#56B4E9", nrow(diagram_nodes))
   }
+
   for (i in 1:nrow(diagram_nodes)) {
     link <- grep(diagram_nodes$label[i], names(overall.CJS$absolutes))
-    diagram_nodes$label[i] <- paste0(diagram_nodes$label[i], 
+    diagram_nodes$label[i] <- paste0(diagram_nodes$label[i],
       "\\nEfficiency: ", ifelse(is.na(overall.CJS$efficiency[link]), "--", round(overall.CJS$efficiency[link] * 100, 0)),
-      "%\\nDetected: ", overall.CJS$absolutes["detected", link], 
+      "%\\nDetected: ", overall.CJS$absolutes["detected", link],
       "\\nMax.Est.: ", ifelse(is.na(overall.CJS$absolutes["estimated", link]), "--",overall.CJS$absolutes["estimated", link]))
   }
 
@@ -91,8 +98,8 @@ printProgression <- function(dot, sections, overall.CJS, spatial, status.df, pri
   })), collapse = "\n")
 
   if (print.releases) {
-    node_fragment <- paste0(node_aux, "\n", 
-      paste0("node [fillcolor = '#e0f4ff'\nfontcolor = '#727475'\nstyle = 'rounded, filled'\nshape = box]\n", 
+    node_fragment <- paste0(node_aux, "\n",
+      paste0("node [fillcolor = '#e0f4ff'\nfontcolor = '#727475'\nstyle = 'rounded, filled'\nshape = box]\n",
       paste0(release_nodes$id, " [label = 'R.S.: ", release_nodes$label, "']", collapse = "\n"), "\n"))
   } else {
     node_fragment <- node_aux
@@ -162,17 +169,17 @@ printProgression <- function(dot, sections, overall.CJS, spatial, status.df, pri
 }
 
 #' Print DOT diagram
-#' 
+#'
 #' @param dot a dot data frame
 #' @inheritParams explore
 #' @inheritParams migration
 #' @inheritParams setSpatialStandards
-#' 
+#'
 #' @return No return value, called to plot and save graphic.
-#' 
+#'
 #' @keywords internal
-#' 
-printDot <- function(dot, sections = NULL, spatial, print.releases) {
+#'
+printDot <- function(dot, spatial, print.releases) {
 # requires:
 # DiagrammeR
 # DiagrammeRsvg
@@ -180,15 +187,24 @@ printDot <- function(dot, sections = NULL, spatial, print.releases) {
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
   names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
 
+  sections <- names(spatial$array.order)
   # Prepare node data frame
   diagram_nodes <- data.frame(
     id = 1:length(unique(unlist(dot[, c(1, 3)]))),
     label = unique(unlist(dot[, c(1, 3)])),
     stringsAsFactors = FALSE)
-  if (!is.null(sections) && length(sections) <= length(cbPalette)) {
+
+  if (length(sections) > 1) {
+    if (length(sections) <= length(cbPalette))
+      to.fill <- cbPalette
+    else
+      to.fill <- gg_colour_hue(length(sections))
+
     diagram_nodes$fillcolor <- rep(NA_character_, nrow(diagram_nodes))
+    
     for (i in 1:length(sections)) {
-       diagram_nodes$fillcolor[grepl(sections[i], diagram_nodes$label)] <- cbPalette[i]
+      arrays <- spatial$array.order[[i]]
+      diagram_nodes$fillcolor[matchl(diagram_nodes$label, arrays)] <- to.fill[i]
     }
   } else {
     diagram_nodes$fillcolor <- rep("#56B4E9", nrow(diagram_nodes))
@@ -221,8 +237,8 @@ printDot <- function(dot, sections = NULL, spatial, print.releases) {
   })), collapse = "\n")
 
   if (print.releases) {
-    node_fragment <- paste0(node_aux, "\n", 
-      paste0("node [fillcolor = '#e0f4ff'\nfontcolor = '#727475'\nstyle = 'rounded, filled'\nshape = box]\n", 
+    node_fragment <- paste0(node_aux, "\n",
+      paste0("node [fillcolor = '#e0f4ff'\nfontcolor = '#727475'\nstyle = 'rounded, filled'\nshape = box]\n",
       paste0(release_nodes$id, " [label = 'R.S.: ", release_nodes$label, "']", collapse = "\n"), "\n"))
   } else {
     node_fragment <- node_aux
@@ -250,7 +266,7 @@ printDot <- function(dot, sections = NULL, spatial, print.releases) {
   }
 
   # Release edges
-  if (print.releases) {  
+  if (print.releases) {
     release_edges <- data.frame(from = release_nodes$id,
       to = diagram_nodes$id[match(release_nodes$Array, diagram_nodes$label)],
       type = rep("[arrowtype='normal']", nrow(release_nodes)))
@@ -292,16 +308,16 @@ printDot <- function(dot, sections = NULL, spatial, print.releases) {
   rsvg::rsvg_svg(svg = plot_raw, file = paste0(tempdir(), "/mb_arrays.svg"))
 }
 
-#' Print biometric graphics 
+#' Print biometric graphics
 #'
 #' Searches for columns containing biometric data and prints graphics per fish group
-#' 
+#'
 #' @inheritParams splitDetections
-#' 
+#'
 #' @return A string of file locations in rmd syntax, to be included in printRmd
-#'  
+#'
 #' @keywords internal
-#' 
+#'
 printBiometrics <- function(bio) {
   # NOTE: The NULL variables below are actually column names used by ggplot.
   # This definition is just to prevent the package check from issuing a note due unknown variables.
@@ -310,18 +326,14 @@ printBiometrics <- function(bio) {
   appendTo("debug", "Starting printBiometrics.")
   biometric.fragment <- ""
   if (any(C <- grepl("Length", colnames(bio)) | grepl("Weight", colnames(bio)) | grepl("Mass", colnames(bio)) | grepl("Size", colnames(bio)))) {
-    if (sum(C) > 1) {
-      graphic.width <- paste0(90 / sum(C), "%")
-    } else {
-      graphic.width <- 0.45
-      graphic.width <- paste0(45, "%")
-    }
+    graphic.width <- 0.45
+    graphic.width <- paste0(45, "%")
     counter <- 1
     for (i in colnames(bio)[C]) {
       appendTo("debug", paste0("Debug: Creating graphic '", gsub("[.]", "_", i), "_boxplot.png'."))
       p <- ggplot2::ggplot(bio, ggplot2::aes(x = as.factor(Group), y = bio[, i]))
-      p <- p + ggplot2::stat_boxplot(geom = "errorbar", na.rm = T)
-      p <- p + ggplot2::geom_boxplot(na.rm = T)
+      p <- p + ggplot2::stat_boxplot(geom = "errorbar", na.rm = TRUE)
+      p <- p + ggplot2::geom_boxplot(na.rm = TRUE)
       p <- p + ggplot2::theme_bw()
       p <- p + ggplot2::theme(panel.grid.minor.x = ggplot2::element_blank(), panel.grid.major.x = ggplot2::element_blank())
       p <- p + ggplot2::labs(x = "", y = i)
@@ -331,6 +343,7 @@ printBiometrics <- function(bio) {
         biometric.fragment <- paste0(biometric.fragment, "![](", tempdir(), "/", gsub("[.]", "_", i), "_boxplot.png){ width=", graphic.width, " }\n")
       else
         biometric.fragment <- paste0(biometric.fragment, "![](", tempdir(), "/", gsub("[.]", "_", i), "_boxplot.png){ width=", graphic.width, " }")
+      counter <- counter + 1
     }
   }
   appendTo("debug", "Terminating printBiometrics.")
@@ -340,22 +353,22 @@ printBiometrics <- function(bio) {
 #' Print dotplots
 #'
 #' Prints dotplots of multiple variables.
-#' 
+#'
 #' @inheritParams simplifyMovements
-#' @inheritParams groupMovements
-#' 
+#' @inheritParams sectionMovements
+#'
 #' @return No return value, called to plot and save graphic.
-#' 
+#'
 #' @keywords internal
-#' 
-printDotplots <- function(status.df, invalid.dist) {
+#'
+printDotplots <- function(status.df, valid.dist) {
   # NOTE: The NULL variables below are actually column names used by ggplot.
   # This definition is just to prevent the package check from issuing a note due unknown variables.
   value <- NULL
   Transmitter <- NULL
 
   appendTo("debug", "Starting printDotplots.")
-  t1 <- status.df[status.df$Valid.detections > 0, c("Transmitter", "Valid.detections", colnames(status.df)[grepl("Average.time.until", colnames(status.df)) | grepl("Average.speed.to", colnames(status.df)) | grepl("Total.time.in", 
+  t1 <- status.df[status.df$Valid.detections > 0, c("Transmitter", "Valid.detections", colnames(status.df)[grepl("Average.time.until", colnames(status.df)) | grepl("Average.speed.to", colnames(status.df)) | grepl("Total.time.in",
     colnames(status.df))])]
   t1 <- t1[, apply(t1, 2, function(x) !all(is.na(x)))]
   t1$Transmitter <- factor(t1$Transmitter, levels = rev(t1$Transmitter))
@@ -363,7 +376,7 @@ printDotplots <- function(status.df, invalid.dist) {
   colnames(t1)[match(names(link), colnames(t1))] <- paste0(names(link), "\n(", link, ")")
   colnames(t1)[grepl("Average.speed.to", colnames(t1))] <- paste0(colnames(t1)[grepl("Average.speed.to", colnames(t1))], "\n(m/s)")
   colnames(t1)[2] <- "Detections\n(n)"
-  if (!invalid.dist) {
+  if (valid.dist) {
     t2 <- t1[, !grepl("Average.time.until", colnames(t1))]
   } else {
     t2 <- t1[, !grepl("Average.speed.to", colnames(t1))]
@@ -406,13 +419,13 @@ printDotplots <- function(status.df, invalid.dist) {
 #' Print survival graphic
 #'
 #' Prints survival graphics per fish group.
-#' 
+#'
 #' @param section.overview A data frame containing the survival per group of fish present in the biometrics. Supplied by assembleOverview.
-#' 
+#'
 #' @return No return value, called to plot and save graphic.
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 printSurvivalGraphic <- function(section.overview) {
   appendTo("debug", "Starting printSurvivalGraphic.")
   section <- NULL
@@ -457,13 +470,13 @@ printSurvivalGraphic <- function(section.overview) {
 
 
 #' print Rmd fragment for inclusion in the report
-#' 
+#'
 #' @param array.overview a list of absolute detection numbers for each group
-#' 
+#'
 #' @return An rmd string to be included in the report.
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 printArrayOverview <- function(array.overview) {
   oldoptions <- options(knitr.kable.NA = "-")
   on.exit(options(oldoptions), add = TRUE)
@@ -481,16 +494,16 @@ printArrayOverview <- function(array.overview) {
 #' Print efficiency fragment
 #'
 #' Prints the ALS inter-array efficiency for inclusion in printRmd.
-#' 
+#'
 #' @param CJS the overall CJS result from a migration analysis. Used to assess if efficiency should be printed.
 #' @param efficiency the overall efficiency result from a residency analysis. Used to assess if efficiency should be printed.
 #' @param intra.CJS The output of the getEstimate calculations.
 #' @param type The type of analysis being run (migration or residency)
-#' 
+#'
 #' @return A rmd string to be included in the report.
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 printEfficiency <- function(CJS = NULL, efficiency = NULL, intra.CJS, type = c("migration", "residency")){
   oldoptions <- options(knitr.kable.NA = "-")
   on.exit(options(oldoptions), add = TRUE)
@@ -579,26 +592,27 @@ knitr::kable(intra.array.CJS[[',i ,']]$absolutes)
 
 *Estimated efficiency:* ', round(intra.CJS[[i]]$combined.efficiency * 100, 2), "%\n")
     }
-  } 
+  }
   return(efficiency.fragment)
 }
 
 #' Print individual graphics
 #'
 #' Prints the individual detections for each fish, overlaying the points in time considered crucial during the analysis.
-#' 
+#'
 #' @inheritParams explore
 #' @inheritParams groupMovements
 #' @inheritParams simplifyMovements
 #' @inheritParams assembleMatrices
+#' @inheritParams plotMoves
 #' @param extension the format of the generated graphics
-#' 
+#'
 #' @return A string of file locations in rmd syntax, to be included in printRmd
-#' 
+#'
 #' @keywords internal
-#' 
-printIndividuals <- function(detections.list, bio, status.df = NULL, tz, 
-  movements, valid.movements = NULL, extension = "png", spatial) {
+#'
+printIndividuals <- function(detections.list, movements, valid.movements, spatial, 
+  status.df = NULL, rsp.info, type = c("stations", "arrays"), extension = "png") {
   # NOTE: The NULL variables below are actually column names used by ggplot.
   # This definition is just to prevent the package check from issuing a note due unknown variables.
   Timestamp <- NULL
@@ -606,146 +620,69 @@ printIndividuals <- function(detections.list, bio, status.df = NULL, tz,
   Array <- NULL
   Station <- NULL
 
-  cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
-  names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
+  input <- list(detections = detections.list,
+                movements = movements,
+                valid.movements = valid.movements,
+                spatial = spatial,
+                status.df = status.df,
+                rsp.info = rsp.info)
 
   appendTo(c("Screen", "Report"), "M: Drawing individual detection graphics.")
 
-  # Y axis order
-  link <- match(spatial$stations$Array, c(unlist(spatial$array.order), "Unknown"))
-  names(link) <- 1:length(link)
-  link <- sort(link)
-  link <- as.numeric(names(link))
-  y.order <- spatial$stations$Standard.name[link]
-
   if (interactive())
-    pb <- txtProgressBar(min = 0, max = length(detections.list), style = 3, width = 60)
+    pb <- txtProgressBar(min = 0, max = length(detections.list), style = 3, width = 60) # nocov
   counter <- 0
   individual.plots <- ""
-  
+
   capture <- lapply(names(detections.list), function(fish) {
     counter <<- counter + 1
-    PlotData <- detections.list[[fish]]
-    PlotData$Standard.name <- factor(PlotData$Standard.name, levels = y.order)
 
-    if (any(levels(PlotData$Array) == "Unknown"))
-      levels(PlotData$Array)[levels(PlotData$Array) == "Unknown"] = "Invalid"
+    p <- plotMoves(input = input, tag = fish, type = type)
+
+    # decide height
+    if (type == "stations")
+      to.check <- levels(detections.list[[fish]]$Standard.name)
     else
-      levels(PlotData$Array) <- c(levels(PlotData$Array), "Invalid")
-    if (any(!PlotData$Valid))
-      PlotData$Array[!PlotData$Valid] <- "Invalid"
-    
-    all.moves.line <- data.frame(
-      Station = as.vector(t(movements[[fish]][, c("First.station", "Last.station")])),
-      Timestamp = as.vector(t(movements[[fish]][, c("First.time", "Last.time")]))
-    )
-    all.moves.line$Station <- factor(all.moves.line$Station, levels = levels(PlotData$Standard.name))
-    all.moves.line$Timestamp <- as.POSIXct(all.moves.line$Timestamp, tz = tz)
-    
-    add.valid.movements <- FALSE
-    if (!is.null(valid.movements[[fish]])) {
-      add.valid.movements <- TRUE
-      simple.moves.line <- data.frame(
-        Station = as.vector(t(valid.movements[[fish]][, c("First.station", "Last.station")])),
-        Timestamp = as.vector(t(valid.movements[[fish]][, c("First.time", "Last.time")]))
-        )
-      simple.moves.line$Station <- factor(simple.moves.line$Station, levels = levels(PlotData$Standard.name))
-      simple.moves.line$Timestamp <- as.POSIXct(simple.moves.line$Timestamp, tz = tz)
-    }
-    
-    colnames(PlotData)[1] <- "Timestamp"
+      to.check <- levels(detections.list[[fish]]$Array)
 
-    the.row <- which(bio$Transmitter == fish)
-    start.line <- as.POSIXct(bio$Release.date[the.row], tz = tz)
-    first.time <- min(c(as.POSIXct(head(PlotData$Timestamp, 1), tz = tz), start.line))
-    attributes(first.time)$tzone <- tz
-    last.time <- as.POSIXct(tail(PlotData$Timestamp, 1), tz = tz)
-
-    if (!is.null(status.df)) {
-      status.row <- which(status.df$Transmitter == fish)
-      relevant.line <- status.df[status.row, (grepl("First.arrived", colnames(status.df)) | grepl("Last.left", colnames(status.df)))]
-    }
-
-    appendTo("debug", paste0("Debug: Printing graphic for fish", fish, "."))
-    # Start plot
-    p <- ggplot2::ggplot(PlotData, ggplot2::aes(x = Timestamp, y = Standard.name, colour = Array))
-    # Choose background
-    default.cols <- TRUE
-    if (attributes(movements[[fish]])$p.type == "Overridden") { # nocov start
-      p <- p + ggplot2::theme(
-        panel.background = ggplot2::element_rect(fill = "white"),
-        panel.border = ggplot2::element_rect(fill = NA, colour = "#ef3b32" , size = 2),
-        panel.grid.major = ggplot2::element_line(size = 0.5, linetype = 'solid', colour = "#ffd8d6"), 
-        panel.grid.minor = ggplot2::element_line(size = 0.25, linetype = 'solid', colour = "#ffd8d6"),
-        legend.key = ggplot2::element_rect(fill = "white", colour = "white"),
-        )
-      default.cols <- FALSE
-    } # nocov end
-    if (attributes(movements[[fish]])$p.type == "Manual") {
-       p <- p + ggplot2::theme(
-        panel.background = ggplot2::element_rect(fill = "white"),
-        panel.border = ggplot2::element_rect(fill = NA, colour = "#ffd016" , size = 2),
-        panel.grid.major = ggplot2::element_line(size = 0.5, linetype = 'solid', colour = "#f2e4b8"), 
-        panel.grid.minor = ggplot2::element_line(size = 0.25, linetype = 'solid', colour = "#f2e4b8"),
-        legend.key = ggplot2::element_rect(fill = "white", colour = "white"),
-        )
-      default.cols <- FALSE
-    } 
-    if (default.cols) {
-      p <- p + ggplot2::theme_bw()
-    }
-    # Plot starting line
-    p <- p + ggplot2::geom_vline(xintercept = start.line, linetype = "dashed")
-    # Plot entry/exit lines
-    if (!is.null(status.df)) {
-      for (l in 1:length(relevant.line)) {
-        if (!is.na(relevant.line[l])) {
-          p <- p + ggplot2::geom_vline(xintercept = as.POSIXct(relevant.line[[l]], tz = tz), linetype = "dashed", color = "grey")
-        }
-      }
-      rm(l, relevant.line)
-    }
-    # Plot movements
-    p <- p + ggplot2::geom_path(data = all.moves.line, ggplot2::aes(x = Timestamp, y = Station, group = 1), col = "grey40", linetype = "dashed")
-    if (add.valid.movements) {
-      p <- p + ggplot2::geom_path(data = simple.moves.line, ggplot2::aes(x = Timestamp, y = Station, group = 1), col = "grey40")
-    }
-    # Trim graphic
-    p <- p + ggplot2::xlim(first.time, last.time)
-    # Paint
-    if (length(levels(PlotData$Array)) <= 7 | (length(levels(PlotData$Array)) == 8 & any(levels(PlotData$Array) == "Invalid"))) {
-      if (any(levels(PlotData$Array) == "Invalid"))
-        the.colours <- as.vector(cbPalette)[c(1:(length(levels(PlotData$Array)) - 1), 8)]
-      else
-        the.colours <- as.vector(cbPalette)[1:length(levels(PlotData$Array))]
-    } else {
-      if (any(levels(PlotData$Array) == "Invalid"))
-        the.colours <- c(gg_colour_hue(length(levels(PlotData$Array)) - 1), "#999999")
-      else
-        the.colours <- gg_colour_hue(length(levels(PlotData$Array)))
-    }
-    p <- p + ggplot2::scale_color_manual(values = the.colours, drop = FALSE)
-    # Plot points
-    p <- p + ggplot2::geom_point()
-    # Fixate Y axis
-    p <- p + ggplot2::scale_y_discrete(drop = FALSE)
-    # Caption and title
-    p <- p + ggplot2::guides(colour = ggplot2::guide_legend(reverse = TRUE))
-    if (!is.null(status.df))
-      p <- p + ggplot2::labs(title = paste0(fish, " (", status.df[status.df$Transmitter == fish, "Status"], ")"), x = paste("tz:", tz), y = "Station Standard Name")
-    else
-      p <- p + ggplot2::labs(title = paste0(fish, " (", nrow(PlotData), " detections)"), x = paste("tz:", tz), y = "Station Standard Name")
-    # Save
-    if (length(levels(PlotData$Standard.name)) <= 30)
+    if (length(to.check) <= 29)
       the.height <- 4
     else
-      the.height <- 4 + (length(levels(PlotData$Standard.name)) - 30) * 0.1
-    ggplot2::ggsave(paste0(tempdir(), "/", fish, ".", extension), width = 5, height = the.height)  # better to save in png to avoid point overlapping issues
-    rm(PlotData, start.line, last.time, first.time)
+      the.height <- 4 + ((to.check - 30) * 0.1)
+
+    # default width:
+    the.width <- 5
+    # Adjustments depending on number of legend valudes
+    if (type == "stations")
+      to.check <- levels(detections.list[[fish]]$Array)
+    else
+      to.check <- unlist(spatial$array.order)
+
+    if (length(to.check) > 14 & length(to.check) <= 29) {
+      if (counter %% 2 == 0) {
+        p <- p + ggplot2::guides(colour = ggplot2::guide_legend(ncol = 2))
+        the.width <- 6
+      } else {
+        p <- p + ggplot2::theme(legend.position = "none")
+        the.width <- 4
+      }
+    }
+    if (length(to.check) >= 29) {
+      if (counter %% 2 == 0) {
+        p <- p + ggplot2::guides(colour = ggplot2::guide_legend(ncol = 3))
+        the.width <- 7.5
+      } else {
+        p <- p + ggplot2::theme(legend.position = "none")
+        the.width <- 2.5
+      }
+    }
+    # Save
+    ggplot2::ggsave(paste0(tempdir(), "/", fish, ".", extension), width = the.width, height = the.height)  # better to save in png to avoid point overlapping issues
+
     if (counter %% 2 == 0) {
-      individual.plots <<- paste0(individual.plots, "![](", tempdir(), "/", fish, ".", extension, "){ width=50% }\n")
+      individual.plots <<- paste0(individual.plots, "![](", tempdir(), "/", fish, ".", extension, "){ width=", the.width * 10, "% }\n")
     } else {
-      individual.plots <<- paste0(individual.plots, "![](", tempdir(), "/", fish, ".", extension, "){ width=50% }")
+      individual.plots <<- paste0(individual.plots, "![](", tempdir(), "/", fish, ".", extension, "){ width=", the.width * 10, "% }")
     }
     if (interactive())
       setTxtProgressBar(pb, counter)
@@ -756,22 +693,34 @@ printIndividuals <- function(detections.list, bio, status.df = NULL, tz,
 }
 
 #' Print circular graphics for each array
-#' 
+#'
 #' Prints the time of first entry point on each of the arrays. Contains functions adapted from the circular R package.
-#' 
+#'
 #' For more details about the original function, visit the circular package homepage at \url{https://github.com/cran/circular}
-#' 
+#'
 #' @param times a (list of) circular object(s)
 #' @inheritParams splitDetections
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 #' @return A string of file locations in rmd syntax, to be included in printRmd
-#' 
+#'
 printCircular <- function(times, bio, suffix = NULL){
   cbPalette <- c("#56B4E9", "#c0ff3e", "#E69F00", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
   circular.plots <- ""
-  colours <- paste0(cbPalette[c(1:length(unique(bio$Group)))], 80)
+
+  if (length(unique(bio$Group)) < 8)
+    colours <- paste0(cbPalette[c(1:length(unique(bio$Group)))], 80)
+  else
+    colours <- paste0(gg_colour_hue(length(unique(bio$Group))), 80)
+
+  names(colours) <- sort(unique(bio$Group))
+
+  if (length(unique(bio$Group)) >= 6)
+    legend.pos <- "bottom"
+  else
+    legend.pos <- "corner"
+
   for (i in 1:length(times)) {
     if (length(unique(bio$Group)) > 1) {
       link <- match(names(times[[i]]), bio$Transmitter)
@@ -784,22 +733,59 @@ printCircular <- function(times, bio, suffix = NULL){
       names(trim.times) <- unique(bio$Group)
       ylegend <- -0.97
     }
+   
+    colours.to.use <- colours[names(trim.times)]
+   
+    if (legend.pos == "bottom") {
+      ylegend <- -1.15
+      xlegend <- 0
+      xjust <- 0.5
+      if (length(colours.to.use) > 2)
+        ncol <- 2
+      if (length(colours.to.use) > 6)
+        ncol <- 3
+      if (length(colours.to.use) > 9 & !any(nchar(names(colours.to.use)) > 9))
+        ncol <- 4
+    } else {
+      ylegend <- -0.97 + (0.08 * (length(colours.to.use) - 2))
+      xlegend <- -1.3
+      xjust <- 0
+      ncol <- 1
+    }
+
     prop <- roundDown(1 / max(unlist(lapply(trim.times, function(x) table(roundUp(x, to = 1)) / sum(!is.na(x))))), to = 1)
-    {grDevices::svg(paste0(tempdir(), "/times_", names(times)[i], suffix, ".svg"), height = 5, width = 5, bg = "transparent")
-    par(mar = c(1, 2, 2, 1))
-    copyOfCirclePlotRad(main = names(times)[i], shrink = 1.05)
+
+    if (legend.pos == "corner")
+      b <- 1
+    else
+      b <- (roundUp(length(colours.to.use) / ncol, 1))
+
+    vertical.mar <- b + 2
+   
+    {grDevices::svg(paste0(tempdir(), "/times_", names(times)[i], suffix, ".svg"), 
+                    height = 5, width = 5, bg = "transparent")
+    
+    par(mar = c(b, (b + 2) / 2, 2, (b + 2) / 2), xpd = TRUE) # bottom, left, top, right
+
+    copyOfCirclePlotRad(main = names(times)[i], shrink = 1.05, xlab = "", ylab = "")
+
     params <- myRoseDiag(trim.times, bins = 24, radii.scale = "linear",
-      prop = prop, tcl.text = -0.1, tol = 0.05, col = colours, border = "black")
+      prop = prop, tcl.text = -0.1, tol = 0.05, col = colours.to.use, border = "black")
+
     roseMean(trim.times, col = params$col, mean.length = c(0.07, -0.07), mean.lwd = 6,
       box.range = "std.error", fill = "white", border = "black",
       box.size = c(1.015, 0.985), edge.length = c(0.025, -0.025),
       edge.lwd = 2)
-    ringsRel(plot.params = params, border = "black", ring.text = TRUE, 
+
+    ringsRel(plot.params = params, border = "black", ring.text = TRUE,
       ring.text.pos = 0.07, rings.lty = "f5", ring.text.cex = 0.8)
-      legend(x = -1.2, y = ylegend,
+
+    legend(x = xlegend, y = ylegend, xjust = xjust, ncol = ncol,
       legend = paste(names(trim.times), " (", unlist(lapply(trim.times, function(x) sum(!is.na(x)))), ")", sep =""),
       fill = params$col, bty = "n", x.intersp = 0.3, cex = 0.8)
+
     grDevices::dev.off()}
+
     if (i %% 2 == 0)
       circular.plots <- paste0(circular.plots, "![](times_", names(times)[i], suffix, ".svg){ width=50% }\n")
     else
@@ -809,7 +795,7 @@ printCircular <- function(times, bio, suffix = NULL){
 }
 
 #' Draw a section on the outside of the circle
-#' 
+#'
 #' @param from value where the section should start
 #' @param to value where the section should end
 #' @param units units of the from and to variables, defaults to "hours"
@@ -817,11 +803,11 @@ printCircular <- function(times, bio, suffix = NULL){
 #' @param limits two values controlling the vertical start and end points of the section
 #' @param fill The colour of the section
 #' @param border The colour of the section's border
-#' 
+#'
 #' @return No return value, adds to an existing plot.
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 circularSection <- function(from, to, units = "hours", template = "clock24", limits = c(1, 0), fill = "white", border = "black"){
   if( inherits(from,"character") ){
     hour.from <- circular::circular(decimalTime(from), units = units, template = template)
@@ -840,11 +826,11 @@ circularSection <- function(from, to, units = "hours", template = "clock24", lim
 }
 
 #' Edited rose diagram function
-#' 
+#'
 #' Adapted from the \code{\link[circular]{rose.diag}} function of the circular package.
-#' 
+#'
 #' For more details about the original function, visit the circular package homepage at \url{https://github.com/cran/circular}.
-#' 
+#'
 #' @param x a vector, matrix or data.frame. The object is coerced to class circular.
 #' @param pch point character to use. See help on par.
 #' @param cex point character size. See help on par.
@@ -861,7 +847,7 @@ circularSection <- function(from, to, units = "hours", template = "clock24", lim
 #' @param tol proportion of white space at the margins of plot.
 #' @param uin desired values for the units per inch parameter. If of length 1, the desired units per inch on the x axis.
 #' @param xlim,ylim the ranges to be encompassed by the x and y axes. Useful for centring the plot
-#' @param prop numerical constant determining the radii of the sectors. By default, prop = 1. 
+#' @param prop numerical constant determining the radii of the sectors. By default, prop = 1.
 #' @param digits number of digits used to print axis values.
 #' @param plot.info an object from plot.circular that contains information on the zero, the rotation and next.points.
 #' @param units the units used in the plot. If NULL the units of the first component of 'x' is used.
@@ -876,22 +862,22 @@ circularSection <- function(from, to, units = "hours", template = "clock24", lim
 #' @param ring.text logical: if notes should be displayed.
 #' @param ring.text.pos The position of the rings' text. Ignored if ring.text is set to FALSE.
 #' @param ring.text.cex The size of the ring's text. Ignored if ring.text is set to FALSE.
-#' 
+#'
 #' @return A list with the zero, rotation and next.points values, to be parsed to an overlaying graphic.
-#' 
+#'
 #' @keywords internal
-#' 
-myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24, 
-  upper = TRUE, ticks = TRUE, tcl = 0.025, tcl.text = 0.125, 
-  radii.scale = c("sqrt", "linear"), border = NULL, col = c("lightblue", "#c0ff3e80", "#ffc0cb80", "#F0E4424D", "#0072B24D", "#D55E004D"), 
-  tol = 0.04, uin = NULL, xlim = c(-1, 1), ylim = c(-1, 1), 
-  prop = 1, digits = 2, plot.info = NULL, units = NULL, template = NULL, 
-  zero = NULL, rotation = NULL, main = NULL, sub = NULL, xlab = "", 
-  ylab = "", add = TRUE, control.circle = circular::circle.control(), rings = c("none", "absolute", "relative"), 
+#'
+myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24,
+  upper = TRUE, ticks = TRUE, tcl = 0.025, tcl.text = 0.125,
+  radii.scale = c("sqrt", "linear"), border = NULL, col = c("lightblue", "#c0ff3e80", "#ffc0cb80", "#F0E4424D", "#0072B24D", "#D55E004D"),
+  tol = 0.04, uin = NULL, xlim = c(-1, 1), ylim = c(-1, 1),
+  prop = 1, digits = 2, plot.info = NULL, units = NULL, template = NULL,
+  zero = NULL, rotation = NULL, main = NULL, sub = NULL, xlab = "",
+  ylab = "", add = TRUE, control.circle = circular::circle.control(), rings = c("none", "absolute", "relative"),
   rings.lty = 2, ring.text = FALSE, ring.text.pos = -0.04, ring.text.cex = 1) {
   rings <- match.arg(rings)
   radii.scale <- match.arg(radii.scale)
-  
+
   if (is.list(x)) {
     max.length <- max(unlist(lapply(x, length)))
     for (i in 1:length(x)) {
@@ -899,18 +885,18 @@ myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24
         x[[i]] <- c(x[[i]], circular::circular(rep(NA, max.length - length(x[[i]]))))
     }
   }
-  
+
   xx <- as.data.frame(x)
   nseries <- ncol(xx)
-  
+
   if (length(col) != nseries)
     col <- rep(col, length.out = nseries)
   xcircularp <- attr(circular::as.circular(xx[, 1]), "circularp")
   modulo <- xcircularp$modulo
-  if (is.null(units)) 
+  if (is.null(units))
     units <- xcircularp$units
   if (is.null(plot.info)) {
-    if (is.null(template)) 
+    if (is.null(template))
       template <- xcircularp$template
     if (template == "geographics" | template == "clock24") {
       zero <- pi / 2
@@ -922,9 +908,9 @@ myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24
         modulo <- "pi"
       }
     }
-    if (is.null(zero)) 
+    if (is.null(zero))
       zero <- xcircularp$zero
-    if (is.null(rotation)) 
+    if (is.null(rotation))
       rotation <- xcircularp$rotation
     next.points <- 0
   } else {
@@ -933,15 +919,15 @@ myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24
     next.points <- plot.info$next.points
   }
   if (!add) {
-    copyOfCirclePlotRad(xlim = xlim, ylim = ylim, uin = uin, shrink = shrink, 
-      tol = tol, main = main, sub = sub, xlab = xlab, ylab = ylab, 
+    copyOfCirclePlotRad(xlim = xlim, ylim = ylim, uin = uin, shrink = shrink,
+      tol = tol, main = main, sub = sub, xlab = xlab, ylab = ylab,
       control.circle = control.circle)
   }
   if (is.null(bins)) {
     bins <- NROW(x)
   } else {
     bins <- round(bins)
-    if (bins <= 0) 
+    if (bins <= 0)
       stop("bins must be non negative")
   }
   if (is.null(border)) {
@@ -953,11 +939,11 @@ myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24
   }
   pch <- rep(pch, nseries, length.out = nseries)
   if (axes) {
-    circular::axis.circular(units = units, template = template, zero = zero, 
-      rotation = rotation, digits = digits, cex = cex, 
+    circular::axis.circular(units = units, template = template, zero = zero,
+      rotation = rotation, digits = digits, cex = cex,
       tcl = tcl, tcl.text = tcl.text)
   }
-  if (!is.logical(ticks)) 
+  if (!is.logical(ticks))
     stop("ticks must be logical")
   if (ticks) {
     at <- circular::circular((0:bins) / bins * 2 * pi, zero = zero, rotation = rotation)
@@ -970,10 +956,10 @@ myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24
     if (n) {
       x <- circular::conversion.circular(x, units = "radians", modulo = modulo)
       attr(x, "circularp") <- attr(x, "class") <- NULL
-      if (template == "clock12") 
+      if (template == "clock12")
         x <- 2 * x
       x <- x %% (2 * pi)
-      copyOfRosediagRad(x, zero = zero, rotation, bins, upper, 
+      copyOfRosediagRad(x, zero = zero, rotation, bins, upper,
         radii.scale, prop, border, col = col[iseries])
     }
   }
@@ -983,18 +969,18 @@ myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24
 
 
 #' Draw rings at relative points
-#' 
+#'
 #' Adapted from RosediagRad() (from the circular package) to draw rings inside the circular plot. Called if rings = TRUE in \code{\link{myRoseDiag}}
-#' 
+#'
 #' For more details about the circular package, visit its homepage at \url{https://github.com/cran/circular}
-#' 
+#'
 #' @inheritParams myRoseDiag
-#' 
+#'
 #' @return No return value, adds to an existing plot.
-#' 
+#'
 #' @keywords internal
-#'  
-ringsRel <- function(plot.params, border, rings.lty, 
+#'
+ringsRel <- function(plot.params, border, rings.lty,
   ring.text, ring.text.pos, ring.text.cex){
   range <- seq(from = 0, to = 1 / plot.params$prop, length.out = 5)
   radius <- c(0.25, 0.50, 0.75, 1)
@@ -1012,10 +998,10 @@ ringsRel <- function(plot.params, border, rings.lty,
 }
 
 #' Draw mean value in the axis margin
-#' 
+#'
 #' Computes and draws the mean value for a given dataset, may also plot standard error of the mean
 #' or standard deviation ranges.
-#' 
+#'
 #' @param input the input dataset
 #' @param col The colours to be used when drawing the means.
 #' @param mean.length vertical length of the mean dash.
@@ -1026,11 +1012,11 @@ ringsRel <- function(plot.params, border, rings.lty,
 #' @param box.size Vertical size of the range box.
 #' @param edge.length Vertical size of the edge whiskers in the range box.
 #' @param edge.lwd Width of the edge whiskers in the range box.
-#' 
+#'
 #' @return No return value, adds to an existing plot.
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 roseMean <- function(input, col = c("cornflowerblue", "chartreuse3", "deeppink"),
   mean.length = c(0.0125, -0.0125), mean.lwd = 4,
   box.range = c("none", "std.error", "sd"), fill = "white", border = "black",
@@ -1073,27 +1059,27 @@ roseMean <- function(input, col = c("cornflowerblue", "chartreuse3", "deeppink")
 }
 
 #' circular:::circlePlotRad
-#' 
-#' This function is an EXACT copy of the function circlePlotRad() in the circular package. 
+#'
+#' This function is an EXACT copy of the function circlePlotRad() in the circular package.
 #' As the function is not exported by the original package, I have copied it here to resolve
 #' the note thrown by devtools::check()
-#' 
+#'
 #' For more details about the original function, visit the circular package homepage at \url{https://github.com/cran/circular}
-#' 
+#'
 #' @param xlim,ylim the ranges to be encompassed by the x and y axes. Useful for centring the plot.
 #' @param uin desired values for the units per inch parameter. If of length 1, the desired units per inch on the x axis.
 #' @param shrink parameter that controls the size of the plotted circle. Default is 1. Larger values shrink the circle, while smaller values enlarge the circle.
 #' @param tol proportion of white space at the margins of plot.
 #' @param main,sub,xlab,ylab title, subtitle, x label and y label of the plot.
 #' @param control.circle parameters passed to plot.default in order to draw the circle. The function circle.control is used to set the parameters.
-#' 
+#'
 #' @return No return value, adds to an existing plot.
-#' 
+#'
 #' @keywords internal
-#' 
-copyOfCirclePlotRad <- function (xlim = c(-1, 1), ylim = c(-1, 1), uin = NULL, shrink = 1, 
-    tol = 0.04, main = NULL, sub = NULL, xlab = NULL, ylab = NULL, 
-    control.circle = circular::circle.control()) 
+#'
+copyOfCirclePlotRad <- function (xlim = c(-1, 1), ylim = c(-1, 1), uin = NULL, shrink = 1,
+    tol = 0.04, main = NULL, sub = NULL, xlab = NULL, ylab = NULL,
+    control.circle = circular::circle.control())
 {
     xlim <- shrink * xlim
     ylim <- shrink * ylim
@@ -1105,14 +1091,14 @@ copyOfCirclePlotRad <- function (xlim = c(-1, 1), ylim = c(-1, 1), uin = NULL, s
     xuin <- oxuin <- oldpin[1]/diff(xlim)
     yuin <- oyuin <- oldpin[2]/diff(ylim)
     if (is.null(uin)) {
-        if (yuin > xuin) 
+        if (yuin > xuin)
             yuin <- xuin
         else xuin <- yuin
     }
     else {
-        if (length(uin) == 1) 
+        if (length(uin) == 1)
             uin <- uin * c(1, 1)
-        if (any(c(xuin, yuin) < uin)) 
+        if (any(c(xuin, yuin) < uin))
             stop("uin is too large to fit plot in")
         xuin <- uin[1]
         yuin <- uin[2]
@@ -1131,43 +1117,43 @@ copyOfCirclePlotRad <- function (xlim = c(-1, 1), ylim = c(-1, 1), uin = NULL, s
     panel.first <- NULL
     panel.last <- NULL
     asp <- NA
-    plot.default(x = x, y = y, type = control.circle$type, xlim = xlim, 
-        ylim = ylim, log = "", main = main, sub = sub, 
-        xlab = xlab, ylab = ylab, ann = ann, axes = axes, frame.plot = frame.plot, 
-        panel.first = panel.first, panel.last = panel.last, asp = asp, 
-        col = control.circle$col, bg = control.circle$bg, pch = control.circle$pch, 
+    plot.default(x = x, y = y, type = control.circle$type, xlim = xlim,
+        ylim = ylim, log = "", main = main, sub = sub,
+        xlab = xlab, ylab = ylab, ann = ann, axes = axes, frame.plot = frame.plot,
+        panel.first = panel.first, panel.last = panel.last, asp = asp,
+        col = control.circle$col, bg = control.circle$bg, pch = control.circle$pch,
         cex = control.circle$cex, lty = control.circle$lty, lwd = control.circle$lwd)
 }
 
 #' circular:::RosediagRad
-#' 
-#' This function is an EXACT copy of the function RosediagRad() in the circular package. 
+#'
+#' This function is an EXACT copy of the function RosediagRad() in the circular package.
 #' As the function is not exported by the original package, I have copied it here to resolve
 #' the note thrown by devtools::check()
-#' 
+#'
 #' For more details about the original function, visit the circular package homepage at \url{https://github.com/cran/circular}
-#' 
+#'
 #' @inheritParams myRoseDiag
-#' 
+#'
 #' @return No return value, adds to an existing plot.
-#' 
+#'
 #' @keywords internal
-#' 
-copyOfRosediagRad <- function (x, zero, rotation, bins, upper, radii.scale, prop, 
-    border, col, ...) 
+#'
+copyOfRosediagRad <- function (x, zero, rotation, bins, upper, radii.scale, prop,
+    border, col, ...)
 {
     n <- length(x)
     freq <- rep(0, bins)
     arc <- (2 * pi)/bins
-    if (!is.logical(upper)) 
+    if (!is.logical(upper))
         stop("upper must be logical")
-    if (upper == TRUE) 
+    if (upper == TRUE)
         x[x == 0] <- 2 * pi
     x[x >= 2 * pi] <- 2 * pi - 4 * .Machine$double.eps
     breaks <- seq(0, 2 * pi, length.out = (bins + 1))
     freq <- hist.default(x, breaks = breaks, plot = FALSE, right = upper)$counts
     rel.freq <- freq/n
-    if (rotation == "clock") 
+    if (rotation == "clock")
         rel.freq <- rev(rel.freq)
     if (radii.scale == "sqrt") {
         radius <- sqrt(rel.freq) * prop
@@ -1179,9 +1165,9 @@ copyOfRosediagRad <- function (x, zero, rotation, bins, upper, radii.scale, prop
     mids <- seq(arc/2, 2 * pi - pi/bins, length = bins)
     for (i in 1:bins) {
         if (rel.freq[i] != 0) {
-            xx <- c(0, radius[i] * cos(seq(sector[i], sector[i] + 
+            xx <- c(0, radius[i] * cos(seq(sector[i], sector[i] +
                 (2 * pi)/bins, length = 1000/bins) + zero), 0)
-            yy <- c(0, radius[i] * sin(seq(sector[i], sector[i] + 
+            yy <- c(0, radius[i] * sin(seq(sector[i], sector[i] +
                 (2 * pi)/bins, length = 1000/bins) + zero), 0)
             polygon(xx, yy, border = border, col = col, ...)
         }
@@ -1189,15 +1175,15 @@ copyOfRosediagRad <- function (x, zero, rotation, bins, upper, radii.scale, prop
 }
 
 #' Print arrival and departure times per section
-#' 
+#'
 #' @param section.times A list of entry and exit times for each section
 #' @inheritParams splitDetections
 #' @param detections A valid detections list
-#' 
+#'
 #' @return No return value, called to plot and save graphic.
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 printSectionTimes <- function(section.times, bio, detections) {
   Date <- NULL
   Group <- NULL
@@ -1222,32 +1208,34 @@ printSectionTimes <- function(section.times, bio, detections) {
     p <- p + ggplot2::labs(x = "", y = "n")
     if (length(unique(plotdata$Group)) <= 8) {
       p <- p + ggplot2::scale_fill_manual(values = as.vector(cbPalette)[1:length(unique(plotdata$Group))], drop = FALSE)
-    } 
+    }
     ggplot2::ggsave(paste0(tempdir(), "/", i,"_days.png"), width = 10, height = length(unique(plotdata$variable)) * 2)
   })
 }
 
 #' print the distribution of fish per location
-#' 
+#'
 #' @param global.ratios the global ratios
 #' @param daily.ratios the daily ratios
 #' @inheritParams migration
-#' 
+#'
 #' @return No return value, called to plot and save graphic.
-#' 
+#'
 #' @keywords internal
-#' 
-printGlobalRatios <- function(global.ratios, daily.ratios, sections) {
+#'
+printGlobalRatios <- function(global.ratios, daily.ratios, spatial) {
   Date <- NULL
   Location <- NULL
   n <- NULL
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
   names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
 
+  sections <- names(spatial$array.order)
+
   unordered.unique.values <- sort(unique(unlist(lapply(daily.ratios, function(x) {
     aux <- which(grepl("^p", colnames(x)))
     aux <- aux[!is.na(match(colnames(x)[aux - 1], sub("p", "", colnames(x)[aux])))]
-    return(colnames(x)[aux - 1])    
+    return(colnames(x)[aux - 1])
   }))))
   link <- unlist(sapply(sections, function(i) which(grepl(paste0("^", i), unordered.unique.values))))
   unique.values <- unordered.unique.values[link]
@@ -1280,15 +1268,16 @@ printGlobalRatios <- function(global.ratios, daily.ratios, sections) {
 }
 
 #' print the individual locations per day
-#' 
+#'
 #' @param ratios the daily ratios
 #' @param dayrange the overall first and last detection dates
+#' @inheritParams sectionMovements
 #' 
 #' @return A string of file locations in rmd syntax, to be included in printRmd
-#' 
+#'
 #' @keywords internal
-#' 
-printIndividualResidency <- function(ratios, dayrange, sections) {
+#'
+printIndividualResidency <- function(ratios, dayrange, spatial) {
   Date <- NULL
   Location <- NULL
   n <- NULL
@@ -1296,11 +1285,13 @@ printIndividualResidency <- function(ratios, dayrange, sections) {
   names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
   counter <- 0
   individual.plots <- NULL
-  
+
+  sections <- names(spatial$array.order)
+
   unordered.unique.values <- sort(unique(unlist(lapply(ratios, function(x) {
     aux <- which(grepl("^p", colnames(x)))
     aux <- aux[!is.na(match(colnames(x)[aux - 1], sub("p", "", colnames(x)[aux])))]
-    return(colnames(x)[aux - 1])    
+    return(colnames(x)[aux - 1])
   }))))
   link <- unlist(sapply(sections, function(i) which(grepl(paste0("^", i), unordered.unique.values))))
   unique.values <- unordered.unique.values[link]
@@ -1323,13 +1314,13 @@ printIndividualResidency <- function(ratios, dayrange, sections) {
     plotdata <- suppressMessages(reshape2::melt(x))
     colnames(plotdata) <- c("Date", "Location", "n")
     plotdata$Date <- as.Date(plotdata$Date)
-    
+
     level.link <- !is.na(match(unique.values, unique(plotdata$Location)))
     use.levels <- unique.values[level.link]
     use.colours <- unique.colours[level.link]
 
     plotdata$Location <- factor(plotdata$Location, levels = use.levels)
-    
+
     p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = Date, y = n, fill = Location))
     p <- p + ggplot2::geom_bar(width = 1, stat = "identity")
     p <- p + ggplot2::theme_bw()
@@ -1352,15 +1343,15 @@ printIndividualResidency <- function(ratios, dayrange, sections) {
 }
 
 #' Print a simple barplot with the number of fish last seen at each section
-#' 
+#'
 #' @param input a table with the last seen data
-#' @param sections the order of the sections
-#' 
+#' @inheritParams sectionMovements
+#'
 #' @return No return value, called to plot and save graphic.
-#' 
+#'
 #' @keywords internal
-#' 
-printLastSection <- function(input, sections) {
+#'
+printLastSection <- function(input, spatial) {
   Section <- NULL
   n <- NULL
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
@@ -1368,7 +1359,8 @@ printLastSection <- function(input, sections) {
   input$Group <- rownames(input)
   plotdata <- suppressMessages(reshape2::melt(input))
   colnames(plotdata) <- c("Group", "Section", "n")
-  plotdata$Section <- factor(gsub("Disap. in |Disap. at ", "", plotdata$Section), levels = c(sections, "Release"))
+  plotdata$Section <- factor(gsub("Disap. in |Disap. at ", "", plotdata$Section), 
+                             levels = c(names(spatial$array.order), "Release"))
   p <- ggplot2::ggplot(plotdata, ggplot2::aes(x = Section, y = n))
   p <- p + ggplot2::geom_bar(stat = "identity", fill = cbPalette[[2]], colour = "transparent")
   p <- p + ggplot2::facet_grid(. ~ Group)
@@ -1380,14 +1372,14 @@ printLastSection <- function(input, sections) {
 }
 
 #' Print a simple barplot with the number of fish last seen at each section
-#' 
+#'
 #' @param input a table with the last seen data
 #' @param sections the order of the sections
-#' 
+#'
 #' @return No return value, called to plot and save graphic.
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 printLastArray <- function(status.df) {
   Very.last.array <- NULL
   Group <- NULL
@@ -1412,14 +1404,14 @@ printLastArray <- function(status.df) {
 }
 
 #' Print sensor data for each individual tag
-#' 
+#'
 #' @param detections A valid detections list
 #' @param extension the format of the generated graphics
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 #' @return A string of file locations in rmd syntax, to be included in printRmd
-#' 
+#'
 printSensorData <- function(detections, extension = "png") {
   individual.plots <- NULL
   Timestamp <- NULL

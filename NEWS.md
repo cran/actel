@@ -2,6 +2,45 @@
 
 Find out the main highlights of each update.
 
+## actel 1.1.0
+
+Fixes:
+  * Prevent crash if all detections for a given stray tag were removed during detection quality checks.
+  * Prevent migration crash if all movement events are rendered invalid before section movements are created.
+  * Prevent crash related with circular plotting when running an analysis on more than eight fish groups.
+  * Prevent bug in older R versions where actel did not display all table rows, for long tables displayed in the console.
+  * **Fixed 'last to last' speed calculations**. A bug was found where this speed method was accidentally matching first stations for distance calculation, rather than last stations.
+  * Fix bug where valid.movements would retain the invalid speed values if the fish no longer moved between arrays.
+  * Fix bug where the wrong tags would be stored in stray_tags.csv.
+  * Fig bug where stray tags from previous runs would leak into stray_tags.csv.
+
+Changes
+  * `stripCodeSpaces()` has been replaced with `extractSignals()`.
+  * **Sections are now set up using a 'Section' column in the spatial.csv file**. The 'sections' argument has been deprecated. See the updated vignettes for details.
+  * **Arrays can now be named freely** (short names are still recommended).
+  * Perform quality checks on the 'replicates' argument earlier in the analyses.
+  * User decisions no longer have default options.
+  * Users must now list **only** the tag signals in the 'override' argument.
+
+Enhancements:
+  * The shapefiles of the study areas can now be water or land polygons. Use the new argument "time" in `loadShape()` to switch from land shapefiles (the default) to water shapefiles.
+  * Paint groups consistently in circular plots.
+  * Improved handling of long array lists in individual detection plots.
+  * Display event number on inactiveness checks.
+  * New argument `discard.first` allows the user to discard detections that happen before a given amount of time has passed after release.
+  * New function `extractCodeSpaces()` has been implemented.
+  * New `preload()` function allows advanced users to run actel without requiring input files. See more in the new dedicated vignette.
+  * New argument `section.order` allows the user to specify the order by which the sections should be listed.
+  * `plotTimes()` has been expanded with new arguments and better compatibility for multiple groups.
+  * New argument `plot.detections.by` allows the user to plot the detections by array, rather than by section. Applied both to the analyses and to `plotMoves()`.
+  * User decisions can now be followed by a in-line comment (started with "#"). Additionally, actel automatically adds default comments to decisions so these are easier to read through in the job log.
+  * Message that opens movement events now includes the respective tag and the type of movements displayed (section or array movements).
+  * Include user comments in the txt job logs.
+  * In case of error, the user can now save a copy of the log up to the point where the function crashed.
+  * Verify number of columns on all detection files.
+  * Run quality checks on standard detection files.
+  * New `getSpeeds()` function allows the user to quickly extract all speed information from the analyses.
+  
 ## actel 1.0.0
 
 Fixes:
@@ -55,6 +94,7 @@ Enhancements:
   * new `plotMoves` function allows the user to create personalised detection plots for specific tags.
   * EPSGcode argument has been removed from all distances matrix related functions. actel now looks for the coordinate system within the shape file supplied.
   * distances matrix functions can now work with degree-based coordinate systems too.
+
 
 ## actel 0.1.3
 
