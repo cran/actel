@@ -56,6 +56,15 @@ preload <- function(biometrics, spatial, deployments, detections, dot, distances
 
   deleteHelpers()
 
+# debug lines
+  if (getOption("actel.debug", default = FALSE)) { # nocov start
+    on.exit(message("Debug: Progress log available at ", gsub("\\\\", "/", paste0(tempdir(), "/actel_debug_file.txt"))))
+    on.exit(message("Debug: Saving carbon copy to ", gsub("\\\\", "/", paste0(tempdir(), "/actel.preload.debug.RData"))), add = TRUE)
+    on.exit(save(list = ls(), file = paste0(tempdir(), "/actel.preload.debug.RData")), add = TRUE)
+    message("!!!--- Debug mode has been activated ---!!!")
+  } # nocov end
+# ------------------------
+
   if (is.na(match(tz, OlsonNames())))
     stop("'tz' could not be recognized as a timezone. Check available timezones with OlsonNames()\n", call. = FALSE)
 
@@ -215,6 +224,12 @@ preloadDetections <- function(input, tz, start.time = NULL, stop.time = NULL) {
 		}
 		input$Receiver <- aux
 	}
+
+  if (!is.character(input$Timestamp))
+    input$Timestamp <- as.character(input$Timestamp)
+
+  if (!is.character(input$CodeSpace))
+    input$CodeSpace <- as.character(input$CodeSpace)
 
 	if (length(the.col <- grep("^[S|s]ensor.[U|u]nit$", colnames(input))) > 0)
 		colnames(input)[the.col] <- "Sensor.Unit"

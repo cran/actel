@@ -1,18 +1,299 @@
-#' Plot detections for a single tag
+#' Plot sensor data for a single tag
 #'
-#' The output of plotMoves is a ggplot object, which means you can then use it in combination
+#' The output of plotSensors is a ggplot object, which means you can then use it in combination
 #' with other ggplot functions, or even together with other packages such as patchwork.
 #'
 #' @param input The results of an actel analysis (either explore, migration or residency).
 #' @param tag The transmitter to be plotted.
-#' @param type The type of y axis desired. One of "stations" (default) or "arrays".
+#' @param sensor The sensors to be plotted. If left empty, all available sensors are plotted
 #' @param title An optional title for the plot. If left empty, a default title will be added.
+#' @param xlab,ylab Optional axis names for the plot. If left empty, default axis names will be added.
+#' @param pcol The colour for the points. If unset, a default palette is used.
+#' @param psize The size of the points. Defaults to 1.
+#' @param lcol The colour for the line. Defaults to grey.
+#' @param lsize The width of the line. Defaults to 0.5 (same as standard ggplots)
+#' @param colour.by One of "arrays" or "sections", defines how the points should be coloured.
+#' @param array.alias A named vector of format c("old_array_name" = "new_array_name") to replace
+#'  default array names with user defined ones. Only relevant if colour.by = "arrays".
+#' @param verbose Logical: Should warning messages be printed, if necessary?
+#'
+#' @return A ggplot object.
+#'
+#' @examples
+#' # Using the example results that come with actel
+#' plotSensors(example.results, 'R64K-4451')
+#'
+#' # Because plotSensors returns a ggplot object, you can store
+#' # it and edit it manually, e.g.:
+#' library(ggplot2)
+#' p <- plotSensors(example.results, 'R64K-4451')
+#' p <- p + xlab("changed the x axis label a posteriori")
+#' p
+#'
+#' # You can also save the plot using ggsave!
+#'
+#' @export
+#'
+plotSensors <- function(input, tag, sensor, title = tag, xlab, ylab, pcol, psize = 1, lsize = 0.5, 
+  colour.by = c("array", "section"), array.alias, lcol = "grey40", verbose = TRUE) {
+  Timestamp <- NULL
+  Sensor.Value <- NULL
+  Sensor.Unit <- NULL
+  Colour <- NULL
+  colour.by <- match.arg(colour.by)
+
+  cbPalette <- c("#56B4E9", "#E69F00", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+  names(cbPalette) <- c("Blue", "Orange", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
+
+  if (!inherits(input, "list"))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (is.null(input$valid.movements) | is.null(input$spatial) | is.null(input$rsp.info))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (length(tag) > 1)
+    stop("Please list only one tag", call. = FALSE)
+
+  if (is.na(match(tag, names(input$valid.detections))))
+    stop("Could not find tag '", tag, "' in the input.", call. = FALSE)
+
+  detections <- input$valid.detections[[tag]]
+  spatial <- input$spatial
+
+  if (all(is.na(detections$Sensor.Value)))
+    stop("No sensor data found for this tag.", call. = FALSE)
+
+  if (any(is.na(detections$Sensor.Value))) {
+    if (verbose)
+      appendTo(c("Screen", "Warning"), paste0(sum(is.na(detections$Sensor.Value)), " rows in this tag's detections do not contain sensor values and will be discarded."))
+    detections <- detections[!is.na(detections$Sensor.Value), ]
+  }
+
+  if (any(link <- is.na(detections$Sensor.Unit) | detections$Sensor.Unit == "")) {
+    detections$Sensor.Unit[link] <- paste0("? (", detections$Signal[link], ")")
+    if (verbose)
+      appendTo(c("Screen", "Warning"), "Not all rows with sensor data contain a sensor unit! Plotting unknown data separately.")
+  }
+
+  if (missing(sensor)) {
+    sensor <- unique(detections$Sensor.Unit)
+  } else {
+    if (any(link <- is.na(match(sensor, unique(detections$Sensor.Unit)))))
+      stop("Could not find sensor unit(s) '", paste(sensor[link], collapse = "', '"), "' in the tag detections.", call. = FALSE)
+  }
+
+  # renaming arrays if relevant
+  if (!missing(array.alias)) {
+    if (colour.by == "section") {
+      link <- match(names(array.alias), levels(detections$Array))
+      if (any(is.na(link)))
+        warning("Could not find ", ifelse(sum(is.na(link) == 1), "array ", "arrays "), names(array.alias)[is.na(link)], " in the study's arrays.", call. = FALSE, immediate. = TRUE)
+      levels(detections$Array)[link[!is.na(link)]] <- array.alias[!is.na(link)]
+    } else {
+      warning("array.alias can only be used when colour.by = 'array'. Ignoring array.alias.", immediate. = TRUE, call. = FALSE)
+    }
+  }
+
+  # detection colour column
+  if (colour.by == "array") {
+    detections$Colour <- detections$Array
+  } else {
+    aux <- lapply(seq_along(spatial$array.order), function(i) {
+      x <- match(detections$Array, spatial$array.order[[i]])
+      x[!is.na(x)] <- names(spatial$array.order)[i]
+      return(x)
+    })
+    aux <- combine(aux)
+    detections$Colour <- factor(aux, levels = names(spatial$array.order))
+  }
+
+  # choose colours
+  if (missing(pcol)) {
+    if (length(levels(detections$Colour)) <= 7) {
+      pcol <- as.vector(cbPalette)[c(1:length(levels(detections$Colour)))]
+    } else {
+      pcol <- c(gg_colour_hue(length(levels(detections$Colour))))
+    }
+  } else {
+    if (length(pcol) != length(levels(detections$Colour)))
+      warning("Not enough colours supplied in 'pcol' (", length(col)," supplied and ", length(levels(detections$Colour)), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
+    pcol <- rep(pcol, length.out = length(levels(detections$Colour)))
+    }
+
+  detections <- detections[detections$Sensor.Unit %in% sensor, ]
+
+  p <- ggplot2::ggplot(data = detections, ggplot2::aes(x = Timestamp, y = Sensor.Value, by = Sensor.Unit))
+  p <- p + ggplot2::geom_line(col = lcol, size = lsize)
+  p <- p + ggplot2::geom_point(size = psize, ggplot2::aes(colour = Colour))
+  p <- p + ggplot2::scale_color_manual(values = pcol, drop = FALSE, name = ifelse(colour.by == "array", "Array", "Section"))
+  p <- p + ggplot2::labs(title = title, x = ifelse(missing(xlab), paste("tz:", input$rsp.info$tz), xlab), y = ifelse(missing(ylab), "Sensor value", ylab))
+  p <- p + ggplot2::theme_bw()
+  p <- p + ggplot2::facet_grid(Sensor.Unit ~ ., scales = "free_y")
+  return(p)
+}
+
+#' Plot simultaneous/cumulative presences at a give array or set of arrays
+#' 
+#' @param input The results of an actel analysis (either explore, migration or residency).
+#' @param arrays One or more arrays to be analysed. If multiple arrays are provided, data will be grouped.
+#' @param title An optional title for the plot.
+#' @param xlab,ylab Optional axis names for the plot. If left empty, default axis names will be added.
+#' @param lwd The line width, only relevant for line plots.
+#' @param col The colour of the line or bars. Defaults to blue.
+#' @param type The type of plot to be drawn. By default, a line is plotted if cumulative = TRUE, and bars are plotted otherwise.
+#' @param timestep The time resolution for the grouping of the results. Defaults to "days", but can be set to "hours" and "mins" (at the expense of computing time).
+#' @param cumulative Logical. If TRUE, a cumulative plot of arrivals is drawn, otherwise the number of tags simultaneously present at the array(s) is drawn.
+#'
+#' @return A ggplot object.
+#'
+#' @examples
+#' # Using the example results that come with actel
+#' plotArray(example.results, arrays = "A9")
+#'
+#' # Because plotArray returns a ggplot object, you can store
+#' # it and edit it manually, e.g.:
+#' library(ggplot2)
+#' p <- plotArray(example.results, arrays = "A9")
+#' p <- p + xlab("changed the x axis label a posteriori")
+#' p
+#'
+#' # You can also save the plot using ggsave!
+#' 
+#' @export
+#' 
+plotArray <- function(input, arrays, title, xlab, ylab, lwd = 1, col = "#56B4E9", 
+  type = c("default", "bars", "lines"), timestep = c("days", "hours", "mins"), cumulative = FALSE) {
+  x <- NULL
+  y <- NULL
+
+  timestep <- match.arg(timestep)
+  type <- match.arg(type)
+
+  if (type == "default") {
+    if (cumulative)
+      type <- "lines"
+    else
+      type <- "bars"
+  }
+
+  if (!inherits(input, "list"))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (is.null(input$valid.movements) | is.null(input$spatial) | is.null(input$rsp.info))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (any(link <- is.na(match(arrays, names(input$arrays)))))
+    stop("Could not find array(s) '", paste(arrays[link], collapse = "', '"), "' in the study area.", call. = FALSE)
+
+  array.string <- paste0("^", arrays, "$", collapse = "|")
+  # choose title
+  if (missing(title)) {
+    if (cumulative)
+      title <- paste(paste(arrays, collapse = "|"), "- Cumulative arrivals")
+    else
+      title <- paste(paste(arrays, collapse = "|"), "- Simultaneous presence")
+  }
+
+  # extract information
+  first.time <- as.POSIXct(NA)[-1]
+  last.time <- as.POSIXct(NA)[-1]
+  
+  plot.list <- lapply(names(input$valid.movements), function(tag) {
+    # cat(tag, "\n")
+    moves <- as.data.frame(input$valid.movements[[tag]])
+    output <- moves[grepl(array.string, moves$Array), ]
+
+    if (nrow(output) > 0) {
+      first.time <<- c(first.time, output$First.time[1])
+      last.time <<- c(last.time, output$Last.time[nrow(output)])
+      output$First.time <- round.POSIXt(output$First.time, units = timestep)
+      output$Last.time <- round.POSIXt(output$Last.time, units = timestep)
+      return(output)
+    } else {
+      return(NULL)
+    }
+  })
+
+  attributes(first.time)$tzone <- input$rsp.info$tz
+  attributes(last.time)$tzone <- input$rsp.info$tz
+
+  if (is.null(first.time) | is.null(last.time))
+    stop("Not enough valid data to draw a plot. Aborting.", call. = FALSE)
+
+  plot.list <- plot.list[!sapply(plot.list, is.null)]
+
+  if (cumulative)
+    last.time <- round.POSIXt(max(first.time), units = timestep)
+  else
+    last.time <- round.POSIXt(max(last.time), units = timestep)
+
+  first.time <- round.POSIXt(min(first.time), units = timestep)
+  
+  if (timestep == "days")
+    seconds <- 3600 * 24
+
+  if (timestep == "hours")
+    seconds <- 3600
+
+  if (timestep == "mins")
+    seconds <- 60
+
+  timerange <- seq(from = first.time, to = last.time, by = seconds)  
+
+  plotdata <- data.frame(x = timerange, y = rep(0, length(timerange)))
+
+  capture <- lapply(plot.list, function(x) {
+    to.add <- rep(0, nrow(plotdata))
+    if (cumulative) {
+      arrived.here <- which(x$First.time[1] == timerange)
+      to.add[arrived.here:length(to.add)] <- 1
+    } else {
+      arrived.here <- sapply(x$First.time, function(i) which(i == timerange))
+      left.here <- sapply(x$Last.time, function(i) which(i == timerange))
+      for(i in 1:length(arrived.here))
+        to.add[arrived.here[i]:left.here[i]] <- 1
+    }
+    plotdata$y <<- plotdata$y + to.add
+  })
+
+  if (type == "lines") {
+    aux1 <- plotdata
+    aux1$x <- aux1$x - (seconds / 2)
+    aux1$index <- seq(from = 1, to = nrow(aux1) * 2 - 1, by = 2)
+
+    aux2 <- plotdata
+    aux2$x <- aux2$x + (seconds / 2)
+    aux2$index <- seq(from = 2, to = nrow(aux2) * 2, by = 2)
+
+    plotdata <- rbind(aux1, aux2)
+    plotdata <- plotdata[order(plotdata$index), ]
+  }
+
+  p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = x, y = y))
+  if (type == "bars") {
+    p <- p + ggplot2::geom_bar(stat = "identity", fill = col)
+    p <- p + ggplot2::scale_y_continuous(expand = c(0, 0, 0.05, 0))
+  }
+  if (type == "lines")
+    p <- p + ggplot2::geom_path(size = lwd, col = col)
+  p <- p + ggplot2::theme_bw()
+  p <- p + ggplot2::labs(title = title, x = ifelse(missing(xlab), paste("tz:", input$rsp.info$tz), xlab), y = ifelse(missing(ylab), "n", ylab))
+  return(p)
+}
+
+#' Plot moves for one ore more tags
+#' 
+#' The output of plotMoves is a ggplot object, which means you can then use it in combination
+#' with other ggplot functions, or even together with other packages such as patchwork.
+#'
+#' @param input The results of an actel analysis (either explore, migration or residency).
+#' @param tags The transmitters to be plotted (optional).
+#' @param title An optional title for the plot.
 #' @param xlab,ylab Optional axis names for the plot. If left empty, default axis names will be added.
 #' @param col An optional colour scheme for the detections. If left empty, default colours will be added.
 #' @param array.alias A named vector of format c("old_array_name" = "new_array_name") to replace
 #'  default array names with user defined ones.
-#' @param frame.warning Logical. By default, actel highlights manually changed or overridden tags in yellow
-#'  and red plot frames, respectively. Set to FALSE to deactivate this behaviour.
+#' @param show.release Logical: Should the line from release to first detection be displayed?
 #'
 #' @return A ggplot object.
 #'
@@ -31,7 +312,161 @@
 #'
 #' @export
 #'
-plotMoves <- function(input, tag, type = c("stations", "arrays"), title, xlab, ylab, col, array.alias, frame.warning = TRUE) {
+plotMoves <- function(input, tags, title, xlab, ylab, col, array.alias, show.release = TRUE) {
+  message("M: The old plotMoves function has been renamed to plotDetections as of version 1.1.1. Please ensure you are calling the right function!")
+  movements <- NULL
+  tag <- NULL
+  event <- NULL
+
+  cbPalette <- c("#56B4E9", "#E69F00", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+  names(cbPalette) <- c("Blue", "Orange", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
+
+  if (!inherits(input, "list"))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (is.null(input$valid.movements) | is.null(input$spatial) | is.null(input$rsp.info))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (!missing(array.alias)) {
+    link <- match(names(array.alias), names(input$arrays))
+    if (any(is.na(link)))
+      warning("Could not find ", ifelse(sum(is.na(link) == 1), "array '", "arrays '"), paste0(names(array.alias)[is.na(link)], collapse = "', '"), "' in the study's arrays.", call. = FALSE, immediate. = TRUE)
+  } else {
+    array.alias <- NULL
+  }
+
+  if (missing(tags)) {
+    message("M: Argument 'tags' not set. Plotting all detected tags.")
+    tags <- names(input$valid.movements)
+  } else {
+    if (any(link <- is.na(match(tags, names(input$valid.movements)))))
+      stop("There are no valid movements for tag(s) '", paste(tags[link], collapse = "', '"), "'.\n", call. = FALSE)
+  }
+
+  if (length(tags) > 5)
+    warning("Plotting many tags at the same time will likely result in ugly output.", call. = FALSE, immediate. = TRUE)
+
+  # choose colours
+  if (missing(col)) {
+    if (length(tags) <= 7) {
+      col <- as.vector(cbPalette)[1:length(tags)]
+    } else {
+      col <- gg_colour_hue(length(tags))
+    }
+  } else {
+    if (length(col) < length(tags)) {
+      warning("Not enough colours supplied in 'col' (", length(col)," supplied and ", length(tags), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
+      col <- rep(col, length.out = length(tags))
+    }
+  }
+
+  # choose title
+  if (missing(title)) {
+    if (length(tags) == 1)
+      title <- tags
+    else
+      title <- NULL
+  }
+
+  # prepare Y axis levels
+  grouping <- names(input$arrays)
+  if (show.release && is.na(match("Release", grouping)))
+    grouping <- c("Release", grouping)
+
+  # extract information
+  plot.list <- lapply(tags, function(tag) {
+    # cat(tag, "\n")
+    moves <- input$valid.movements[[tag]]
+    release.date <- input$rsp.info$bio$Release.date[input$rsp.info$bio$Signal == extractSignals(tag)]
+
+    if (show.release) {
+      x1 <- data.frame(array = factor(c("Release", moves$Array), levels = grouping),
+                       date = c(release.date, moves$First.time),
+                       index = seq(from = 1, to = (nrow(moves) * 2) + 1, by = 2),
+                       tag = rep(tag, nrow(moves) + 1),
+                       event = 0:nrow(moves))
+    } else {
+      x1 <- data.frame(array = factor(moves$Array, levels = grouping),
+                       date = moves$First.time,
+                       index = seq(from = 1, to = (nrow(moves) * 2) - 1, by = 2),
+                       tag = rep(tag, nrow(moves)),
+                       event = 1:nrow(moves))
+    }
+
+    new.i <- seq(from = 2, to = nrow(x1) * 2, by = 2)
+    if (show.release)
+      new.i <- new.i[-length(new.i)]
+
+    x2 <- data.frame(array = factor(moves$Array, levels = grouping),
+                     date = moves$Last.time,
+                     index = new.i,
+                     tag = rep(tag, nrow(moves)),
+                     event = 1:nrow(moves))
+
+    output <- rbind(x1, x2)
+    output <- output[order(output$index), ]
+
+    if (!is.null(array.alias)) {
+      link <- match(names(array.alias), levels(output$array))
+      levels(output$array)[link[!is.na(link)]] <- array.alias[!is.na(link)]
+    }
+
+    return(output)
+  })
+
+  plotdata <- data.table::rbindlist(plot.list)
+
+  aux <- lapply(plot.list, function(x) x[nrow(x), ])
+  final.points <- data.table::rbindlist(aux)
+
+  p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = date, y = array, colour = tag))
+  p <- p + ggplot2::geom_line(ggplot2::aes(group = tag))
+  p <- p + ggplot2::geom_line(ggplot2::aes(group = interaction(tag, event)), size = 2)
+  p <- p + ggplot2::geom_point(data = final.points)
+  p <- p + ggplot2::theme_bw()
+  p <- p + ggplot2::scale_y_discrete(drop = FALSE)   # Show all Y axis values
+  p <- p + ggplot2::scale_color_manual(name = "", values = col, drop = FALSE)
+  if (length(tags) == 1)
+    p <- p + ggplot2::theme(legend.position = "none")
+  p <- p + ggplot2::labs(title = title, x = ifelse(missing(xlab), paste("tz:", input$rsp.info$tz), xlab), y = ifelse(missing(ylab), "Array", ylab))
+  return(p)
+}
+
+
+#' Plot detections for a single tag
+#'
+#' The output of plotDetections is a ggplot object, which means you can then use it in combination
+#' with other ggplot functions, or even together with other packages such as patchwork.
+#'
+#' @param input The results of an actel analysis (either explore, migration or residency).
+#' @param tag The transmitter to be plotted.
+#' @param type The type of y axis desired. One of "stations" (default) or "arrays".
+#' @param title An optional title for the plot. If left empty, a default title will be added.
+#' @param xlab,ylab Optional axis names for the plot. If left empty, default axis names will be added.
+#' @param col An optional colour scheme for the detections. If left empty, default colours will be added.
+#' @param array.alias A named vector of format c("old_array_name" = "new_array_name") to replace
+#'  default array names with user defined ones.
+#' @param frame.warning Logical. By default, actel highlights manually changed or overridden tags in yellow
+#'  and red plot frames, respectively. Set to FALSE to deactivate this behaviour.
+#'
+#' @return A ggplot object.
+#'
+#' @examples
+#' # Using the example results that come with actel
+#' plotDetections(example.results, 'R64K-4451')
+#'
+#' # Because plotDetections returns a ggplot object, you can store
+#' # it and edit it manually, e.g.:
+#' library(ggplot2)
+#' p <- plotDetections(example.results, 'R64K-4451')
+#' p <- p + xlab("changed the x axis label a posteriori")
+#' p
+#'
+#' # You can also save the plot using ggsave!
+#'
+#' @export
+#'
+plotDetections <- function(input, tag, type = c("stations", "arrays"), title, xlab, ylab, col, array.alias, frame.warning = TRUE) {
   # NOTE: The NULL variables below are actually column names used by ggplot.
   # This definition is just to prevent the package check from issuing a note due unknown variables.
   Timestamp <- NULL
@@ -50,7 +485,10 @@ plotMoves <- function(input, tag, type = c("stations", "arrays"), title, xlab, y
   if (is.null(input$valid.movements) | is.null(input$spatial) | is.null(input$rsp.info))
     stop("Could not recognise the input as an actel results object.", call. = FALSE)
 
-  if (is.na(match(tag, names(input$detections))))
+  if (length(tag) > 1)
+    stop("Please list only one tag", call. = FALSE)
+ 
+ if (is.na(match(tag, names(input$detections))))
     stop("Could not find tag '", tag, "' in the input.", call. = FALSE)
 
   # start preparing inputs
@@ -241,10 +679,10 @@ plotMoves <- function(input, tag, type = c("stations", "arrays"), title, xlab, y
   # Trim graphic
   p <- p + ggplot2::xlim(first.time, last.time)
   # Paint
-  p <- p + ggplot2::scale_color_manual(values = col, drop = FALSE)
+  p <- p + ggplot2::scale_color_manual(values = col, drop = FALSE, name = ifelse(type == "stations", "Array", "Section"))
   # Plot points
   p <- p + ggplot2::geom_point()
-  # Fixate Y axis
+  # Show all Y axis values
   p <- p + ggplot2::scale_y_discrete(drop = FALSE)
   # Caption and title
   p <- p + ggplot2::guides(colour = ggplot2::guide_legend(reverse = TRUE))
@@ -266,6 +704,8 @@ plotMoves <- function(input, tag, type = c("stations", "arrays"), title, xlab, y
 #' @param title A title for the plot.
 #' @param mean.dash Logical: Should the mean value be displayed on the plot's edge?
 #' @param mean.range Logical: Should the SEM be displayed? (only relevant if mean.dash = TRUE)
+#' @param mean.range.darken.factor A numeric factor to darken the mean range edges for each group. Values greater
+#'  than 1 darken the colour, and values lower than 1 lighten the colour.
 #' @param rings Logical: Should inner plot rings be displayed?
 #' @param file A file name to save the plot to. Leave NULL to plot on active graphics device. Available file extensions: .svg, .pdf, .png and .tiff.
 #' @param height,width The height and width of the output file. Use inches for .pdf and .svg files or pixels for .png and .tiff files.
@@ -301,7 +741,7 @@ plotMoves <- function(input, tag, type = c("stations", "arrays"), title, xlab, y
 #' @export
 #'
 plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.dash = TRUE,
-  mean.range = TRUE, rings = TRUE, file, width, height, bg = "transparent", ncol, 
+  mean.range = TRUE, mean.range.darken.factor = 1.4, rings = TRUE, file, width, height, bg = "transparent", ncol, 
   legend.pos = c("auto", "corner", "bottom"), ylegend, xlegend, xjust = c("auto", "centre", "left", "right"), 
   expand = 0.95, cex = 1){
 
@@ -349,7 +789,7 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
     }
     colours <- scales::alpha(colour = aux, alpha = alpha)
   } else {
-    if (length(col) != length(times))
+    if (length(col) < length(times))
       stop("'col' must be of the same length as 'times' (", length(col), " != ", length(times), ").", call. = FALSE)
     colours <- scales::alpha(colour = col, alpha = alpha)
   }
@@ -489,10 +929,10 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
     prop = prop, tcl.text = -0.1, tol = 0.05, col = colours, border = "black")
 
   if (mean.dash) {
-    roseMean(times, col = params$col, mean.length = c(0.07, -0.07), mean.lwd = 6,
-      box.range = ifelse(mean.range, "std.error", "none"), fill = "white", border = "black",
-      box.size = c(1.015, 0.985), edge.length = c(0.025, -0.025),
-      edge.lwd = 2)
+    roseMean(times, col = scales::alpha(params$col, 1), mean.length = c(0.07, -0.07), mean.lwd = 6,
+      box.range = ifelse(mean.range, "std.error", "none"), fill = "white", horizontal.border = "black", 
+      vertical.border = scales::alpha(sapply(params$col, function(i) darken(i, mean.range.darken.factor)), 1), box.size = c(1.015, 0.985), 
+      edge.length = c(0.025, -0.025), edge.lwd = 2)
   }
 
   if (rings) {
@@ -733,4 +1173,357 @@ advEfficiency <- function(x, labels = NULL, q = c(0.025, 0.5, 0.975), force.grid
   print(p)
 
   return(ranges)
+}
+
+
+#' Plot residency for a single tag
+#'
+#' The output of plotResidency is a ggplot object, which means you can then use it in combination
+#' with other ggplot functions, or even together with other packages such as patchwork.
+#'
+#' @param input The results of an actel analysis (either explore, migration or residency).
+#' @param tag The transmitter to be plotted.
+#' @param title An optional title for the plot. If left empty, a default title will be added.
+#' @param xlab,ylab Optional axis names for the plot. If left empty, default axis names will be added.
+#' @param col An optional colour scheme for the detections. If left empty, default colours will be added.
+#'
+#' @return A ggplot object.
+#'
+#' @examples
+#' # For this example, I have modified the example.results that come with actel,
+#' # so they resemble a residency output
+#' \dontshow{
+#' example.residency.results <- c(example.results, additional.residency.results)
+#' example.residency.results$rsp.info$analysis.type <- "residency"
+#' }
+#' plotResidency(example.residency.results, 'R64K-4451')
+#'
+#' # Because plotResidency returns a ggplot object, you can store
+#' # it and edit it manually, e.g.:
+#' library(ggplot2)
+#' p <- plotResidency(example.residency.results, 'R64K-4451')
+#' p <- p + xlab("changed the x axis label a posteriori")
+#' p
+#'
+#' # You can also save the plot using ggsave!
+#'
+#' @export
+#'
+plotResidency <- function(input, tag, title, xlab, ylab, col) {
+  # NOTE: The NULL variables below are actually column names used by ggplot.
+  # This definition is just to prevent the package check from issuing a note due unknown variables.
+  Timeslot <- NULL
+  Location <- NULL
+  n <- NULL
+
+  cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+  names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
+
+  if (!inherits(input, "list"))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (is.null(input$valid.movements) | is.null(input$spatial) | is.null(input$rsp.info))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (input$rsp.info$analysis.type != "residency")
+    stop("plotResidency can only be used with residency results.", call. = FALSE)
+
+  if (length(tag) > 1)
+    stop("Please list only one tag", call. = FALSE)
+ 
+  if (is.na(match(tag, names(input$time.ratios))))
+    stop("Could not find tag '", tag, "' in the input.", call. = FALSE)
+
+  # start preparing inputs
+  tz <- input$rsp.info$tz
+  timestep <- attributes(input$time.ratios)$timestep
+  ratios <- input$time.ratios[[tag]]
+  sections <- names(input$spatial$array.order)
+
+  time.range <- range(input$global.ratios[[1]]$Timeslot)
+  if (timestep == "days") {
+    time.range[1] <- time.range[1] - 86400
+    time.range[2] <- time.range[2] + 86400
+  } else {
+    time.range[1] <- time.range[1] - 3600
+    time.range[2] <- time.range[2] + 3600
+  }
+
+  unordered.unique.values <- sort(unique(unlist(lapply(input$time.ratios, function(x) {
+    aux <- which(grepl("^p", colnames(x)))
+    aux <- aux[!is.na(match(colnames(x)[aux - 1], sub("p", "", colnames(x)[aux])))]
+    return(colnames(x)[aux - 1])
+  }))))
+  link <- unlist(sapply(sections, function(i) which(grepl(paste0("^", i), unordered.unique.values))))
+  unique.values <- unordered.unique.values[link]
+
+  if (missing(col)) {
+    if (length(unique.values) <= 8)
+      unique.colours <- as.vector(cbPalette)[1:length(unique.values)]
+    else
+      unique.colours <- gg_colour_hue(length(unique.values))
+  } else {
+    if (length(col) < length(unique.values))
+      warning("Not enough colours supplied in 'col' (", length(col)," supplied and ", length(unique.values), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
+    unique.colours <- rep(col, length.out = length(unique.values))
+  }
+
+  x <- ratios
+  aux <- which(grepl("^p", colnames(ratios)))
+  columns.to.use <- aux[!is.na(match(colnames(x)[aux - 1], sub("p", "", colnames(x)[aux])))]
+  new.colnames <- colnames(x)[c(1, columns.to.use - 1)]
+  x <- x[, c(1, columns.to.use)]
+  colnames(x) <- new.colnames
+  plotdata <- suppressMessages(reshape2::melt(x, id.vars = "Timeslot"))
+  colnames(plotdata) <- c("Timeslot", "Location", "n")
+
+  level.link <- !is.na(match(unique.values, unique(plotdata$Location)))
+  use.levels <- unique.values[level.link]
+  use.colours <- unique.colours[level.link]
+
+  plotdata$Location <- factor(plotdata$Location, levels = use.levels)
+
+  if (missing(title))
+    title <- paste0(tag, " (", as.character(x$Timeslot[1]), " to ", as.character(x$Timeslot[nrow(x)]), ")")
+
+  if (missing (xlab))
+    xlab <- ""
+
+  if (missing(ylab))
+    ylab <- ifelse(timestep == "days", "% time per day", "% time per hour")
+
+  p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = Timeslot, y = n, fill = Location))
+  p <- p + ggplot2::geom_bar(width = ifelse(timestep == "days", 86400, 3600), stat = "identity")
+  p <- p + ggplot2::theme_bw()
+  p <- p + ggplot2::scale_y_continuous(limits = c(0,  max(apply(ratios[, columns.to.use, drop = FALSE], 1, sum))), expand = c(0, 0))
+  p <- p + ggplot2::labs(title = title, x = xlab, y = ylab)
+  p <- p + ggplot2::scale_x_datetime(limits = time.range)
+  p <- p + ggplot2::scale_fill_manual(values = use.colours, drop = TRUE, name = "Location")
+
+  if (length(use.levels) > 5 & length(use.levels) <= 10)
+    p <- p + ggplot2::guides(fill = ggplot2::guide_legend(ncol = 2))
+  if (length(use.levels) > 10)
+    p <- p + ggplot2::guides(fill = ggplot2::guide_legend(ncol = 3))
+
+  return(p)
+}
+
+#' Plot global/group residency
+#'
+#' By default, this function plots the global residency. However, you can use the argument 'group'
+#' to plot the results only from a specific animal group. Lastly, you can also use 'sections', rather
+#' than 'group', to compare the residency at a specific section (or group of sections) between the 
+#' different groups.
+#' 
+#' The output of plotRatios is a ggplot object, which means you can then use it in combination
+#' with other ggplot functions, or even together with other packages such as patchwork.
+#'
+#' @param input The results of an actel analysis (either explore, migration or residency).
+#' @param group An optional argument to plot only the data corresponding to one group.
+#' @param sections An optional argument to plot the residency of the multiple groups for a specific subset of sections.
+#' @param type The type of residency to be displayed. One of 'absolutes' (the default) or 'percentages'.
+#' @param title An optional title for the plot. If left empty, a default title will be added.
+#' @param xlab,ylab Optional axis names for the plot. If left empty, default axis names will be added.
+#' @param col An optional colour scheme for the detections. If left empty, default colours will be added.
+#'
+#' @return A ggplot object.
+#'
+#' @examples
+#' # For this example, I have modified the example.results that come with actel,
+#' # so they resemble a residency output
+#' \dontshow{
+#' example.residency.results <- c(example.results, additional.residency.results)
+#' example.residency.results$rsp.info$analysis.type <- "residency"
+#' }
+#' plotRatios(example.residency.results)
+#'
+#' # Because plotRatios returns a ggplot object, you can store
+#' # it and edit it manually, e.g.:
+#' library(ggplot2)
+#' p <- plotRatios(example.residency.results, group = "A")
+#' p <- p + xlab("changed the x axis label a posteriori")
+#' p
+#'
+#' # You can also save the plot using ggsave!
+#'
+#' @export
+#'
+plotRatios <- function(input, group, sections, type = c("absolutes", "percentages"), title, xlab, ylab, col) {
+  # NOTE: The NULL variables below are actually column names used by ggplot.
+  # This definition is just to prevent the package check from issuing a note due unknown variables.
+  type <- match.arg(type)
+  Timeslot <- NULL
+  Location <- NULL
+  Group <- NULL
+  n <- NULL
+
+  cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+  names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
+
+  if (!inherits(input, "list"))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (is.null(input$valid.movements) | is.null(input$spatial) | is.null(input$rsp.info))
+    stop("Could not recognise the input as an actel results object.", call. = FALSE)
+
+  if (input$rsp.info$analysis.type != "residency")
+    stop("plotRatios can only be used with residency results.", call. = FALSE)
+
+  if (!missing(group) & !missing(sections))
+    stop("Please use only one of 'group' or 'sections' at a time.", call. = FALSE)
+
+  if (!missing(group) && length(group) > 1)
+    stop("Please select only one group.", call. = FALSE)
+
+  if (!missing(group) && is.na(match(group, names(input$group.ratios))))
+    stop("Could not find group '", group, "' in the input.", call. = FALSE)
+
+  if (!missing(sections)) {
+    if (link <- any(is.na(match(sections, colnames(input$global.ratios$absolutes)))))
+      stop("Section", ifelse(sum(link) > 1, "s '", " '"), paste0(sections[link], collapse = "', '"),
+        ifelse(sum(link) > 1, "' do ", "' does "), "not exist, or no tags have ever been assigned to it.", call. = FALSE)
+  }
+
+  if (missing(group)) {
+    if (missing(sections)) {
+      the.ratios <- input$global.ratios[[type]]
+    } else {
+      if (type == "absolutes") {
+        aux <- lapply(names(input$group.ratios), function(i) {
+          x <- input$group.ratios[[i]]$absolutes
+          x <- x[, c(1, match(sections, colnames(x)))]
+          if (ncol(x) > 2)
+            x$n <- apply(x[, -1], 1, sum)
+          else
+            colnames(x)[2] <- "n"
+          x$Group <- i
+          return(x[, c("Timeslot", "Group", "n")])
+        })
+        the.ratios <- as.data.frame(data.table::rbindlist(aux))
+      } else {
+        # because there is no easy cbindlist function, initiate the dataframe with the timeslots only
+        # and then append the relevant information per group.
+        the.ratios <- input$group.ratios[[1]]$absolutes[, "Timeslot", drop = FALSE]
+        capture <- lapply(names(input$group.ratios), function(i) {
+          if (any(!is.na(match(sections, colnames(input$group.ratios[[i]]$absolutes))))) {
+            x <- input$group.ratios[[i]]$absolutes
+            link <- match(sections, colnames(x))
+            link <- link[!is.na(link)]
+            x <- x[, c(1, link)]
+            if (ncol(x) > 2)
+              x[, i] <- apply(x[, -1], 1, sum)
+            else
+              colnames(x)[2] <- i
+            the.ratios <<- cbind(the.ratios, x[, i, drop = FALSE])
+          } # else skip this group
+        })
+        if (ncol(the.ratios) > 2) {
+          # Turn into percentages (like it is done in globalRatios)
+          the.ratios$Total <- apply(the.ratios[, -1], 1, sum)
+          the.ratios[, -1] <- round(the.ratios[, -1] / the.ratios[, ncol(the.ratios)], 3)
+          # failsafe in case totals are 0 in group ratios
+          the.ratios[, 2:ncol(the.ratios)][is.na(the.ratios[, 2:ncol(the.ratios)])] <- 0
+        } else {
+          # else values are either 1 or 0
+          the.ratios[, 2][the.ratios[, 2] > 1] <- 1
+          the.ratios$Total <- the.ratios[, 2]
+        }
+      }      
+      attributes(the.ratios)$timestep <- attributes(input$global.ratios[[1]])$timestep
+    }
+  } else {
+    the.ratios <- input$group.ratios[[group]][[type]]
+  }
+
+  if (missing(title)) {
+    if (missing(group)) {
+      if (missing(sections))
+        title <- "Global ratios"
+      else
+        title <- paste0("Group ratios for section", ifelse(length(sections) > 1, "s ", " "), paste0(sections, collapse = ", "))
+    } else {
+      title <- paste("Ratios for group", group)
+    }
+  }
+
+  if (missing(xlab))
+    xlab <- ""
+
+  if (missing(ylab)) {
+    if (type == "absolutes")
+      ylab <- "n"
+    else
+      ylab <- "% tags"
+  }
+
+  if (missing(sections)) {
+    plotdata <- suppressMessages(reshape2::melt(the.ratios[, -ncol(the.ratios)], id.vars = "Timeslot"))
+    colnames(plotdata) <- c("Timeslot", "Location", "n")
+    plotdata$Location <- factor(plotdata$Location, levels = colnames(input$global.ratios[[1]])[-c(1, ncol(input$global.ratios[[1]]))])
+  } else {
+    if (type == "absolutes") {
+      plotdata <- the.ratios
+    } else {
+      plotdata <- suppressMessages(reshape2::melt(the.ratios[, -ncol(the.ratios)], id.vars = "Timeslot"))
+      colnames(plotdata) <- c("Timeslot", "Group", "n")
+    }
+  }
+
+  if (missing(col)) {
+    if (missing(sections)) {
+      if ((ncol(input$global.ratios[[1]]) - 2) <= 8)
+        unique.colours <- as.vector(cbPalette)[1:(ncol(input$global.ratios[[1]]) - 2)]
+      else
+        unique.colours <- gg_colour_hue(ncol(input$global.ratios[[1]]) - 2)
+    } else {
+      if (length(unique(plotdata$Group)) <= 8)
+        unique.colours <- as.vector(cbPalette)[1:length(unique(plotdata$Group))]
+      else
+        unique.colours <- gg_colour_hue(length(unique(plotdata$Group)))
+    }
+  } else {
+    if (missing(sections)) {
+      if (length(col) < length(unique(plotdata$Location)))
+        warning("Not enough colours supplied in 'col' (", length(col)," supplied and ", length(unique(plotdata$Location)), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
+      unique.colours <- rep(col, length.out = length(unique(plotdata$Location)))
+    } else {
+      if (length(col) < length(unique(plotdata$Group)))
+        warning("Not enough colours supplied in 'col' (", length(col)," supplied and ", length(unique(plotdata$Group)), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
+      unique.colours <- rep(col, length.out = length(unique(plotdata$Group)))
+    }
+  }
+
+  if (missing(sections))
+    p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = Timeslot, y = n, fill = Location, col = Location))
+  else
+    p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = Timeslot, y = n, fill = Group, col = Group))
+
+  p <- p + ggplot2::geom_bar(width = ifelse(attributes(the.ratios)$timestep == "days", 86400, 3600), stat = "identity")
+  p <- p + ggplot2::theme_bw()
+
+  if (missing(sections) | type == "percentages") {
+    if (ncol(the.ratios) > 3)
+      max.y <- max(apply(the.ratios[, c(-1, -ncol(the.ratios))], 1, sum))
+    else
+      max.y <- max(the.ratios[, 2])
+  } else {
+    max.y <- max(with(the.ratios, aggregate(n, list(Timeslot), sum))$x)
+  }
+
+  if (type == "absolutes")
+    p <- p + ggplot2::scale_y_continuous(limits = c(0,  max.y * 1.05), expand = c(0, 0))
+  else
+    p <- p + ggplot2::scale_y_continuous(limits = c(0,  max.y), expand = c(0, 0))
+
+  p <- p + ggplot2::labs(title = title, x = xlab, y = ylab)
+
+  p <- p + ggplot2::scale_fill_manual(values = unique.colours, drop = FALSE)
+  p <- p + ggplot2::scale_colour_manual(values = unique.colours, drop = FALSE)
+
+  if (length(unique.colours) > 10 & length(unique.colours) <= 20)
+    p <- p + ggplot2::guides(fill = ggplot2::guide_legend(ncol = 2))
+  if (length(unique.colours) > 20)
+    p <- p + ggplot2::guides(fill = ggplot2::guide_legend(ncol = 3))
+
+  return(p)
 }

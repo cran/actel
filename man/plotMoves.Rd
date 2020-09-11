@@ -2,28 +2,25 @@
 % Please edit documentation in R/plot.R
 \name{plotMoves}
 \alias{plotMoves}
-\title{Plot detections for a single tag}
+\title{Plot moves for one ore more tags}
 \usage{
 plotMoves(
   input,
-  tag,
-  type = c("stations", "arrays"),
+  tags,
   title,
   xlab,
   ylab,
   col,
   array.alias,
-  frame.warning = TRUE
+  show.release = TRUE
 )
 }
 \arguments{
 \item{input}{The results of an actel analysis (either explore, migration or residency).}
 
-\item{tag}{The transmitter to be plotted.}
+\item{tags}{The transmitters to be plotted (optional).}
 
-\item{type}{The type of y axis desired. One of "stations" (default) or "arrays".}
-
-\item{title}{An optional title for the plot. If left empty, a default title will be added.}
+\item{title}{An optional title for the plot.}
 
 \item{xlab, ylab}{Optional axis names for the plot. If left empty, default axis names will be added.}
 
@@ -32,8 +29,7 @@ plotMoves(
 \item{array.alias}{A named vector of format c("old_array_name" = "new_array_name") to replace
 default array names with user defined ones.}
 
-\item{frame.warning}{Logical. By default, actel highlights manually changed or overridden tags in yellow
-and red plot frames, respectively. Set to FALSE to deactivate this behaviour.}
+\item{show.release}{Logical: Should the line from release to first detection be displayed?}
 }
 \value{
 A ggplot object.

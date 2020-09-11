@@ -10,7 +10,6 @@ setwd("exampleWorkspace")
 write.csv(example.distances, "distances.csv")
 
 test_that("explore stops when any argument does not make sense", {
-	
 	expect_error(explore(tz = 1),
 		"'tz' could not be recognized as a timezone. Check available timezones with OlsonNames()", fixed = TRUE)
 	
@@ -111,7 +110,7 @@ test_that("explore stops when any argument does not make sense", {
 		"'override' must be numeric. Please include only the tag signals in the 'override' argument.", fixed = TRUE)
 	
 	expect_warning(explore(tz = "Europe/Copenhagen", override = 4450, report = FALSE, GUI = "never"),
-		"Override has been triggered for fish 4450 but this signal was not detected.", fixed = TRUE)
+		"Override has been triggered for tag 4450 but this signal was not detected.", fixed = TRUE)
 	
 	expect_error(explore(tz = "Europe/Copenhagen", GUI = 1),
 		"'GUI' should be one of 'needed', 'always' or 'never'.", fixed = TRUE)
@@ -119,6 +118,9 @@ test_that("explore stops when any argument does not make sense", {
 	expect_error(explore(tz = "Europe/Copenhagen", GUI = "abc"),
 		"'arg' should be one of ", fixed = TRUE)
 
+	expect_error(explore(tz = "Europe/Copenhagen", plot.detections.by = 1, GUI = "never"),
+		"'plot.detections.by' should be one of 'stations' or 'arrays'", fixed = TRUE)
+  
   aux <- c(
     length(suppressWarnings(packageDescription("gWidgets2"))),
     length(suppressWarnings(packageDescription("gWidgets2RGtk2"))),

@@ -2,6 +2,48 @@
 
 Find out the main highlights of each update.
 
+## actel 1.1.1
+
+Fixes:
+  * Prevent crash if data used as input for `preload()` contains factors.
+  * Prevent crash during individual plot printing if number of stations is higher than 29.
+  * Prevent bad structuring of the legend in individual plots if `plot.detections.by = 'arrays'`.
+  * Prevent crash of CJS functions when running tags with multiple sensors.
+  * Prevent CJS crash due to overlapping array names.
+  * Prevent crash if spatial has release sites, but biometrics doesn't (in CJS calculations of migration).
+  * Fixed a bug where the sensor data would get scrambled when reading standard format detection files.
+  * Fixed visual bug where the progress bar for sensor plots would not reach 100%.
+
+Changes:
+  * **`plotMoves()` has been renamed to `plotDetections()`**
+  * In the residency analysis, the following output **objects have changed name**:
+    * `daily.ratios` is now `time.ratios`
+    * `daily.positions` is now `time.positions`
+  * In the residency analysis report, the section 'Section progression' has been renamed to 'Global residency'.
+
+Enhancements:
+  * Never show unknown events during movement table display.
+  * Show how many invalid events were omitted in the message that opens movement events.
+  * Expand unknown receiver options to allow discarding unknown detections and repeating the same action for all occurrences.
+  * Improve error messages when something fails during detections loading.
+  * Improve detection file recognition mechanics.
+  * New function `plotSensors()` can be used to plot the sensor data for each tag.
+  * Sensor plots are now painted by array or section (matching the detection plots).
+  * New function `plotMoves()` can be used to plot the movement evolution of multiple tags simultaneously.
+  * New function `plotArray()` can be used to plot the simultaneous number of fish present at a subset of arrays or,
+  if `cumulative = TRUE`, the cumulative number of individual fish to have reached that subset of arrays per unit of time.
+  * New argument in the `residency()` analysis: `timestep` allows the user to decide whether residency calculations should be done on a daily basis (default) or an hourly basis (at cost of computing time).
+  * New fail-safe prevents unhandled function failure if arrays were accidentally assigned to more than one section.
+  * Introduced fail-safes so report compiling does not fail when R is not being able to produce SVG graphics.
+  * Improved cleanliness by moving temporary report files to a dedicated actel folder.
+  * New function `plotResidency()` can be used to plot the individual residency for each fish.
+  * The column order in global.ratios now follows the section order.
+  * New output in the residency analysis: group.ratios (similar to global.ratios, but per group).
+  * New function `plotRatios()` can be used to plot the global and group residency.
+  * Improve handling of very long legends in the global residency plots.
+  * Display times as hh:mm:ss in the movement tables to avoid ambiguity in interpretation.
+  * Colour the SEM ranges in the circular plots (matching the respective groups). The level of darkening can be controlled with the new `mean.range.darken.factor` argument in `plotTimes()`.
+
 ## actel 1.1.0
 
 Fixes:
@@ -23,7 +65,7 @@ Changes
   * Users must now list **only** the tag signals in the 'override' argument.
 
 Enhancements:
-  * The shapefiles of the study areas can now be water or land polygons. Use the new argument "time" in `loadShape()` to switch from land shapefiles (the default) to water shapefiles.
+  * The shapefiles of the study areas can now be water or land polygons. Use the new argument "type" in `loadShape()` to switch from land shapefiles (the default) to water shapefiles.
   * Paint groups consistently in circular plots.
   * Improved handling of long array lists in individual detection plots.
   * Display event number on inactiveness checks.
@@ -32,7 +74,7 @@ Enhancements:
   * New `preload()` function allows advanced users to run actel without requiring input files. See more in the new dedicated vignette.
   * New argument `section.order` allows the user to specify the order by which the sections should be listed.
   * `plotTimes()` has been expanded with new arguments and better compatibility for multiple groups.
-  * New argument `plot.detections.by` allows the user to plot the detections by array, rather than by section. Applied both to the analyses and to `plotMoves()`.
+  * New argument `plot.detections.by` allows the user to plot the detections by array, rather than by station. Applied both to the analyses and to `plotMoves()`.
   * User decisions can now be followed by a in-line comment (started with "#"). Additionally, actel automatically adds default comments to decisions so these are easier to read through in the job log.
   * Message that opens movement events now includes the respective tag and the type of movements displayed (section or array movements).
   * Include user comments in the txt job logs.
@@ -140,7 +182,7 @@ Enhancements:
   * Improve the distances matrix so it can cope with unspecified release sites.
   * transitionLayer can now take into account the station positions and expand the study area as needed.
   * transitionLayer now has a "buffer" argument, which can be used to expand the study area beyond the limits of the shape file.
-  * distanceMatrix will now warn the user if some stations are completely cut off from the rest (i.e. there is no water path).
+  * distancesMatrix will now warn the user if some stations are completely cut off from the rest (i.e. there is no water path).
   * Reports are now opened using utils::browseURL, allowing the report to be open even when the computer is not connected to the internet.
   * Sensor values are now transported through the analysis and returned in the valid detections (for Vemco loggers only for now).
   * Ensure the legend in the residency graphics follows the order specified in the sections argument.

@@ -27,6 +27,7 @@ NULL
 #' @keywords internal
 #'
 getDualMatrices <- function(replicates, CJS = NULL, spatial, detections.list) {
+  appendTo("debug", "Running getDualMatrices.")
   output <- list()
   for(i in 1:length(replicates)) {
     continue <- TRUE
@@ -67,6 +68,7 @@ getDualMatrices <- function(replicates, CJS = NULL, spatial, detections.list) {
 #' @keywords internal
 #'
 includeIntraArrayEstimates <- function(m, efficiency = NULL, CJS = NULL) {
+  appendTo("debug", "Running includeIntraArrayEstimates.")
   if (!is.null(efficiency) & !is.null(CJS))
     stop("Use only one of 'efficiency' or 'CJS' at a time.\n")
   if (length(m) > 0) {
@@ -104,6 +106,7 @@ includeIntraArrayEstimates <- function(m, efficiency = NULL, CJS = NULL) {
 #' @keywords internal
 #'
 assembleSplitCJS <- function(mat, CJS, arrays, releases, intra.CJS = NULL) {
+  appendTo("debug", "Running assembleSplitCJS.")
   recipient <- lapply(names(CJS), function(i) {
     aux <- releases[releases$Combined == i, ]
     output <- assembleArrayCJS(mat = mat[i], CJS = CJS[[i]], arrays = arrays, releases = aux)[[1]]
@@ -129,6 +132,7 @@ assembleSplitCJS <- function(mat, CJS, arrays, releases, intra.CJS = NULL) {
 #' @keywords internal
 #'
 assembleGroupCJS <- function(mat, CJS, arrays, releases, intra.CJS = NULL) {
+  appendTo("debug", "Running assembleGroupCJS.")
   recipient <- lapply(names(CJS), function(i) {
     link <- grepl(paste0("^", i), names(mat))
     aux <- releases[releases$Group == i, ]
@@ -156,6 +160,7 @@ assembleGroupCJS <- function(mat, CJS, arrays, releases, intra.CJS = NULL) {
 #' @keywords internal
 #'
 breakMatricesByArray <- function(m, arrays, type = c("peers", "all"), verbose = TRUE) {
+  appendTo("debug", "Running breakMatricesByArray.")
   type <- match.arg(type)
   recipient <- list()
   for (i in 1:length(arrays)) {
@@ -166,7 +171,7 @@ breakMatricesByArray <- function(m, arrays, type = c("peers", "all"), verbose = 
       else
         a.regex <- paste0("^", c(names(arrays)[i], arrays[[i]]$all.after), "$", collapse = "|")
       aux  <- lapply(m, function(m) m[, which(grepl(a.regex, colnames(m)))])
-      # Failsafe in case some fish are released at one of the peers
+      # Failsafe in case some tags are released at one of the peers
       keep <- unlist(lapply(m, function(m) any(grepl(names(arrays)[i], colnames(m)))))
       aux  <- aux[keep]
       # Convert peers to single column and add fake start
@@ -187,10 +192,10 @@ breakMatricesByArray <- function(m, arrays, type = c("peers", "all"), verbose = 
       zero.check <- all(own.zero.check) | all(peer.zero.check)
       if (all(zero.check)) {
         if (all(own.zero.check) & verbose) {
-          appendTo(c("Screen", "Warning", "Report"), paste0("No fish passed through array ", names(arrays)[i], ". Skipping efficiency estimations for this array."))
+          appendTo(c("Screen", "Warning", "Report"), paste0("No tags passed through array ", names(arrays)[i], ". Skipping efficiency estimations for this array."))
         } else {
           if (all(peer.zero.check) & verbose)
-            appendTo(c("Screen", "Warning", "Report"), paste0("No fish passed through any of the efficiency peers of array ", names(arrays)[i], ". Skipping efficiency estimations for this array."))
+            appendTo(c("Screen", "Warning", "Report"), paste0("No tags passed through any of the efficiency peers of array ", names(arrays)[i], ". Skipping efficiency estimations for this array."))
           }
       } else {
         recipient[[length(recipient) + 1]] <- aux
@@ -216,6 +221,7 @@ breakMatricesByArray <- function(m, arrays, type = c("peers", "all"), verbose = 
 #' @keywords internal
 #'
 assembleArrayCJS <- function(mat, CJS, arrays, releases) {
+  appendTo("debug", "Running assembleArrayCJS.")
   # Compile final objects
   absolutes <- matrix(nrow = 5, ncol = length(arrays))
   colnames(absolutes) <- names(arrays)
@@ -233,9 +239,9 @@ assembleArrayCJS <- function(mat, CJS, arrays, releases) {
     if (!is.na(absolutes["estimated", i]) && !is.null(arrays[[i]]$before)) {
       # if estimations were made for all the previous arrays
       if (all(!is.na(absolutes["estimated", arrays[[i]]$before]))) {
-        # if fish were included in the system in the target array
+        # if tags were included in the system in the target array
         if (any(releases$Array == i))
-          # the max is the sum of the estimated for the previous arrays plus the released fish.
+          # the max is the sum of the estimated for the previous arrays plus the released tags.
           the.max <- sum(absolutes["estimated", arrays[[i]]$before]) + sum(releases$n[releases$Array == i])
         else
           # the max is the sum of the estimated for the previous arrays.
@@ -277,6 +283,7 @@ assembleArrayCJS <- function(mat, CJS, arrays, releases) {
 #'
 assembleMatrices <- function(spatial, movements, status.df, arrays, paths, dotmat) {
   temp <- efficiencyMatrix(movements = movements, arrays = arrays, paths = paths, dotmat = dotmat)
+  appendTo("debug", "Running assembleMatrices.")
   output <- lapply(temp, function(x) {
     # sort the rows by the same order as status.df
     x <- includeMissing(x = x, status.df = status.df)
@@ -297,7 +304,7 @@ assembleMatrices <- function(spatial, movements, status.df, arrays, paths, dotma
       for(i in 1:length(aux)){
         r <- sapply(spatial$release.sites$Standard.name, function(x) grepl(x, names(aux)[i]))
         if(sum(r) > 1)
-          stop("Multiple release sites match the matrix name. Make sure that the release sites' names are not contained within the fish groups or within themselves.\n")
+          stop("Multiple release sites match the matrix name. Make sure that the release sites' names are not contained within the animal groups or within themselves.\n")
         the.col <- min(which(grepl(spatial$release.sites$Array[r], colnames(aux[[i]]))))
         aux[[i]] <- aux[[i]][, c(1, the.col:ncol(aux[[i]]))]
       }
@@ -382,7 +389,7 @@ simpleCJS <- function(input, estimate = NULL, fixed.efficiency = NULL, silent = 
   # r: tags detected at i and on peers
   # z: tags NOT detected at i but detected on peers
   # p: probability of detection (efficiency)
-  # M: fish estimated to be alive at i
+  # M: animals estimated to be alive at i
 
   S <- rep(NA, ncol(input) - 1)
   r <- z <- p <- m <- M <- rep(NA, ncol(input))
@@ -410,13 +417,13 @@ simpleCJS <- function(input, estimate = NULL, fixed.efficiency = NULL, silent = 
     }
     # number of detected tags at i (m)
     m[i] = sum(input[, i])
-    # number of fish estimated alive at i (M)
+    # number of animals estimated alive at i (M)
     # Failsafe for array with 0 efficiency. Issues warning.
     if (p[i] == 0 | m[i] == 0) {
       if(p[i] == 0 & !silent)
         warning("Array '", colnames(input)[i],"' had 0% efficiency. Skipping survival estimation.")
       if(m[i] == 0 & !silent)
-        warning("No fish were detected at array '", colnames(input)[i],"'. Skipping survival estimation.")
+        warning("No tags were detected at array '", colnames(input)[i],"'. Skipping survival estimation.")
       M[i] = M[i - 1]
       S[i - 1] = -999
       if (i == (ncol(input)-1))
@@ -499,11 +506,12 @@ simpleCJS <- function(input, estimate = NULL, fixed.efficiency = NULL, silent = 
 #' @keywords internal
 #'
 mbSplitCJS <- function(mat, fixed.efficiency = NULL) {
+  appendTo("debug", "Running mbSplitCJS.")
   recipient <- lapply(mat, function(m) {
-    if (is.na(fixed.efficiency[grepl(colnames(m[[1]])[2], names(fixed.efficiency))]))
+    if (is.na(fixed.efficiency[grepl(paste0("^", colnames(m[[1]])[2], "$"), names(fixed.efficiency))]))
       array.efficiency <- NULL
     else
-      array.efficiency <- c(1, fixed.efficiency[grepl(colnames(m[[1]])[2], names(fixed.efficiency))], 1)
+      array.efficiency <- c(1, fixed.efficiency[grepl(paste0("^", colnames(m[[1]])[2], "$"), names(fixed.efficiency))], 1)
     return(lapply(m, function(mm) simpleCJS(mm, fixed.efficiency = array.efficiency, silent = TRUE)))
   })
   groups <- unique(unlist(lapply(recipient, names)))
@@ -533,13 +541,14 @@ mbSplitCJS <- function(mat, fixed.efficiency = NULL) {
 #' @keywords internal
 #'
 mbGroupCJS <- function(mat, status.df, fixed.efficiency = NULL) {
+  appendTo("debug", "Running mbGroupCJS.")
   output <- list()
   for (i in 1:length(unique(status.df$Group))) {
     output[[i]] <- lapply(mat, function(m_i) {
-      if (is.na(fixed.efficiency[grepl(colnames(m_i[[1]])[2], names(fixed.efficiency))]))
+      if (is.na(fixed.efficiency[grepl(paste0("^", colnames(m_i[[1]])[2], "$"), names(fixed.efficiency))]))
         array.efficiency <- NULL
       else
-        array.efficiency <- c(1, fixed.efficiency[grepl(colnames(m_i[[1]])[2], names(fixed.efficiency))], 1)
+        array.efficiency <- c(1, fixed.efficiency[grepl(paste0("^", colnames(m_i[[1]])[2], "$"), names(fixed.efficiency))], 1)
       link <- grepl(paste0("^", unique(status.df$Group)[i]), names(m_i))
       if (any(link)) {
         if(sum(link) == 1)
@@ -561,7 +570,7 @@ mbGroupCJS <- function(mat, status.df, fixed.efficiency = NULL) {
 #'
 #' @inheritParams cjs_args
 #'
-#' @return A matrix of detection histories per fish.
+#' @return A matrix of detection histories per tag.
 #'
 #' @keywords internal
 #'
@@ -574,10 +583,10 @@ efficiencyMatrix <- function(movements, arrays, paths, dotmat) {
   max.ef$Release = 1
   min.ef <- max.ef
 
-  capture <- lapply(names(movements), function(fish) {
+  capture <- lapply(names(movements), function(tag) {
     max.aux <- c(1, rep(0, length(arrays)))
     names(max.aux) <- c("Release", names(arrays))
-    one.way <- oneWayMoves(movements = movements[[fish]], arrays = arrays)
+    one.way <- oneWayMoves(movements = movements[[tag]], arrays = arrays)
     if (!is.null(one.way)) {
       max.aux[match(one.way$Array, names(max.aux))] <- 1
       min.aux <- max.aux
@@ -587,8 +596,8 @@ efficiencyMatrix <- function(movements, arrays, paths, dotmat) {
         if (!is.null(aux))
           max.aux[match(aux, names(max.aux))] <- 1
       }
-      max.ef[extractSignals(fish), ] <<- max.aux
-      min.ef[extractSignals(fish), ] <<- min.aux
+      max.ef[extractSignals(tag), ] <<- max.aux
+      min.ef[extractSignals(tag), ] <<- min.aux
     }
   })
   return(list(maxmat = max.ef, minmat = min.ef))
@@ -598,11 +607,12 @@ efficiencyMatrix <- function(movements, arrays, paths, dotmat) {
 #'
 #' @inheritParams cjs_args
 #'
-#' @return A data frame with the uni-directional movements for the target fish.
+#' @return A data frame with the uni-directional movements for the target tags.
 #'
 #' @keywords internal
 #'
 oneWayMoves <- function(movements, arrays) {
+  appendTo("debug", "Running oneWayMoves.")
   if (nrow(movements) > 1) {
     while (TRUE) {
       aux <- data.frame(from = movements$Array[-nrow(movements)], to = movements$Array[-1])
@@ -621,7 +631,7 @@ oneWayMoves <- function(movements, arrays) {
   }
 }
 
-#' Find and list arrays which failed during the movements of the fish
+#' Find and list arrays which failed during the movements of the tags
 #'
 #' @param moves the valid array movements
 #' @inheritParams res_efficiency
@@ -632,6 +642,7 @@ oneWayMoves <- function(movements, arrays) {
 #' @keywords internal
 #'
 countArrayFailures <- function(moves, paths, dotmat) {
+  appendTo("debug", "Running countArrayFailures.")
   x <- lapply(1:(nrow(moves) - 1), function(i) {
     A <- moves$Array[i]
     B <- moves$Array[i + 1]
@@ -645,8 +656,8 @@ countArrayFailures <- function(moves, paths, dotmat) {
 
 #' Find which arrays to blame for a jump in movement events
 #'
-#' @param from The array where the fish started
-#' @param to The array where the fish was next detected
+#' @param from The array where the tag started
+#' @param to The array where the tag was next detected
 #' @inheritParams res_efficiency
 #'
 #' @return A list containing information on the arrays that failed
@@ -654,6 +665,7 @@ countArrayFailures <- function(moves, paths, dotmat) {
 #' @keywords internal
 #'
 blameArrays <- function(from, to, paths) {
+  appendTo("debug", "Running blameArrays.")
   the.paths <- paths[[paste0(from, "_to_", to)]]
   if (is.null(the.paths))
     stop("Either 'from' is not connected to 'to', or both are neighbours.\n")
@@ -674,39 +686,40 @@ blameArrays <- function(from, to, paths) {
   }
 }
 
-#' Include fish that were never detected
+#' Include tags that were never detected
 #'
 #' @param x an efficiency matrix
 #' @inheritParams cjs_args
 #'
-#' @return A matrix of detection histories per fish, including fish that were never detected.
+#' @return A matrix of detection histories per tag, including tags that were never detected.
 #'
 #' @keywords internal
 #'
 includeMissing <- function(x, status.df){
-  appendTo("debug", "Starting includeMissing")
-  include <- as.character(status.df[
+  appendTo("debug", "Running includeMissing.")
+  aux <- as.character(status.df[
     -match(rownames(x),
       sapply(as.character(status.df$Signal),
         function(i) min(as.numeric(unlist(strsplit(i, "|", fixed = TRUE)))))
       ), "Signal"])
-  x[include, ] = 0
-  x[include, 1] = 1
-  appendTo("debug", "Terminating includeMissing")
+  include <- as.character(sapply(aux, function(i) {
+    min(as.numeric(unlist(strsplit(i, "|", fixed = TRUE))))
+  }))
+  x[include, ] <- 0
+  x[include, 1] <- 1
   return(x)
 }
-
 
 #' Compile detection matrix for last array
 #'
 #' @inheritParams cjs_args
 #'
-#' @return A matrix of detection histories per fish for the last array.
+#' @return A matrix of detection histories per tag for the last array.
 #'
 #' @keywords internal
 #'
 dualMatrix <- function(array, replicates, spatial, detections.list){
-  appendTo("debug", "Starting dualMatrix.")
+  appendTo("debug", "Running dualMatrix.")
   all.stations <- spatial$stations$Standard.name[spatial$stations$Array == array]
   original <- all.stations[!all.stations %in% replicates]
   efficiency <- as.data.frame(matrix(ncol = 2, nrow = length(detections.list)))
@@ -717,7 +730,6 @@ dualMatrix <- function(array, replicates, spatial, detections.list){
     efficiency[i, "replicates"] <- any(!is.na(match(replicates, detections.list[[i]]$Standard.name)))
   }
   colnames(efficiency) <- c("R1", "R2")
-  appendTo("debug", "Terminating dualMatrix.")
   return(efficiency)
 }
 
@@ -745,6 +757,7 @@ dualMatrix <- function(array, replicates, spatial, detections.list){
 #' @export
 #'
 dualArrayCJS <- function(input){
+  appendTo("debug", "Running dualArrayCJS.")
   if ((!inherits(input, "matrix") & !inherits(input, "data.frame")) || ncol(input) != 2 | any(!apply(input, 2, is.logical)))
     stop("Please provide a data.frame or matrix of TRUE/FALSE's with two columns", call. = FALSE)
 
@@ -790,6 +803,7 @@ dualArrayCJS <- function(input){
 #' @keywords internal
 #'
 combineCJS <- function(..., estimate = NULL, fixed.efficiency = NULL, silent = FALSE){
+  appendTo("debug", "Running combineCJS.")
   # stop if both estimate and fixed efficiency are present
   if (!is.null(estimate) & !is.null(fixed.efficiency))
     stop("Please choose only one of 'estimate' or 'fixed.efficiency'.\n")

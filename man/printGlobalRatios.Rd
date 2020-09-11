@@ -2,19 +2,19 @@
 % Please edit documentation in R/print.R
 \name{printGlobalRatios}
 \alias{printGlobalRatios}
-\title{print the distribution of fish per location}
+\title{print the distribution of tags per location}
 \usage{
-printGlobalRatios(global.ratios, daily.ratios, spatial)
+printGlobalRatios(global.ratios, time.ratios, spatial, rsp.info)
 }
 \arguments{
 \item{global.ratios}{the global ratios}
 
-\item{daily.ratios}{the daily ratios}
+\item{time.ratios}{the daily ratios}
 }
 \value{
 No return value, called to plot and save graphic.
 }
 \description{
-print the distribution of fish per location
+print the distribution of tags per location
 }
 \keyword{internal}

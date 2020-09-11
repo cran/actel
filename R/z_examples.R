@@ -73,7 +73,7 @@ createWorkspace <- function(dir) {
 #'
 exampleWorkspace <- function(dir) {
   if (missing(dir))
-    stop("Please specify a target directory", call = FALSE)
+    stop("Please specify a target directory", call. = FALSE)
 
   if (!dir.exists(dir))
     dir.create(dir)
@@ -147,6 +147,8 @@ Once finished, explore the html report and the object 'results' for the output."
 #'   \item{Receiver}{The ALS serial number}
 #'   \item{CodeSpace}{The code space of the detected tag}
 #'   \item{Signal}{The signal of the detected tag}
+#'   \item{Sensor.Value}{The data recorded by the sensor (dummy values)}
+#'   \item{Sensor.Unit}{The unit of the sensor data}
 #' }
 #' @source Data collected by the authors.
 #'
@@ -185,7 +187,9 @@ Once finished, explore the html report and the object 'results' for the output."
 
 #' Example migration results
 #'
-#' A list with the results of a migration analysis ran on the example data.
+#' A list with the results of a migration analysis ran on the example data. 
+#' Note: Many objects were trimmed to reduce package size. Use exampleWorkspace()
+#' To run an analysis on the example data and obtain a full results object.
 #'
 #' @format A list of outputs from migration()
 #' @source Data collected by the authors.
@@ -193,3 +197,14 @@ Once finished, explore the html report and the object 'results' for the output."
 #' @keywords internal
 #'
 "example.results"
+
+#' Example residency results
+#'
+#' A list with residency results to append to example.results, so some examples can run.
+#'
+#' @format A list of outputs from residency()
+#' @source Data collected by the authors.
+#'
+#' @keywords internal
+#'
+"additional.residency.results"

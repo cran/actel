@@ -87,23 +87,23 @@ test_that("Movement events with one detection have '0:00' residency time.", {
 	    speed.method = "last to last", max.interval = 60, tz = "Europe/Copenhagen", dist.mat = dist.mat)
 	# First event
 	expect_equal(aux[[1]]$Detections[1], 1)
-	expect_equal(aux[[1]]$Time.in.array[1], "0:00")
+	expect_equal(aux[[1]]$Time.in.array[1], "0:00:00")
 	# Following events
 	expect_equal(aux[[1]]$Detections[2], 1)
-	expect_equal(aux[[1]]$Time.in.array[2], "0:00")
+	expect_equal(aux[[1]]$Time.in.array[2], "0:00:00")
 })
 
 test_that("speedReleaseToFirst can handle unknown events", {
   aux <- names(moves)
-  output <- lapply(names(moves), function(fish) {
-      speedReleaseToFirst(fish = fish, bio = bio, movements = moves[[fish]],
+  output <- lapply(names(moves), function(tag) {
+      speedReleaseToFirst(tag = tag, bio = bio, movements = moves[[tag]],
                           dist.mat = dist.mat, speed.method = "last to last")
     })
   names(output) <- aux
   rm(aux)
-  expect_equal(output[[1]]$Time.travelling[1], "295:44")
+  expect_equal(output[[1]]$Time.travelling[1], "295:44:39")
   expect_equal(output[[1]]$Average.speed.m.s[1], NA_real_)
-  expect_equal(output[[2]]$Time.travelling[1], "334:00")
+  expect_equal(output[[2]]$Time.travelling[1], "334:01:00")
   expect_equal(output[[2]]$Average.speed.m.s[1], 0.001759)
 })
 
@@ -111,8 +111,8 @@ test_that("speedReleaseToFirst can handle a first detection previous to release"
   xbio <- bio
   xbio$Release.date[4] <- xbio$Release.date[4] + (40 * 24 * 3600)
   aux <- names(moves)
-  output <- lapply(names(moves), function(fish) {
-      speedReleaseToFirst(fish = fish, bio = xbio, movements = moves[[fish]],
+  output <- lapply(names(moves), function(tag) {
+      speedReleaseToFirst(tag = tag, bio = xbio, movements = moves[[tag]],
                           dist.mat = dist.mat, speed.method = "last to last")
     })
   names(output) <- aux
@@ -125,7 +125,7 @@ test_that("movementTimes correctly handles events with one detection.", {
 	xmoves <- output[[1]]
 	xmoves$Detections <- 1
 	output <- movementTimes(xmoves)
-	expect_equal(unique(output$Time.in.array), "0:00")
+	expect_equal(unique(output$Time.in.array), "0:00:00")
 })
 
 setwd("..")

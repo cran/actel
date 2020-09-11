@@ -1,3 +1,41 @@
+#' darken colours
+#' 
+#' Copied from https://gist.github.com/Jfortin1/72ef064469d1703c6b30
+#' 
+#' @param color The colour to be darkened
+#' @param factor The level of darkening
+#' 
+#' @return The darker colour code
+#' 
+#' @keywords internal
+#'  
+darken <- function(color, factor = 1.4){
+    col <- grDevices::col2rgb(color)
+    col <- col / factor
+    col <- grDevices::rgb(t(col), maxColorValue = 255)
+    col
+}
+
+#' Match POSIX values
+#' 
+#' @param this the vector of posix to be match
+#' @param there the vector of posix to be matched against
+#' 
+#' @return a vector with the matches
+#' 
+#' @keywords internal
+#' 
+match.POSIXt <- function(this, there) {
+  sapply(this, function(i) {
+    x <- which(i == there)
+    if (length(x) == 0)
+      return(NA)
+    if (length(x) > 1)
+      return(min(x))
+    return(x)
+  })
+}
+
 #' stop function but paste error to the report too
 #' 
 #' @param ... parts of the error string
@@ -42,7 +80,7 @@ userInput <- function(question, choices, tag, hash) {
             warning("A comment was requested but that option is not available here. Please try again.", immediate. = TRUE, call. = FALSE)
           } else {
             appendTo("UD", paste("comment # on", tag))
-            appendTo(c("UD", "Comment"), readline(paste0("New comment on fish ", tag, ": ")), tag)
+            appendTo(c("UD", "Comment"), readline(paste0("New comment on tag ", tag, ": ")), tag)
             appendTo("Screen", "M: Comment successfully stored, returning to the previous interaction.")
           }
         } else {
@@ -454,13 +492,13 @@ roundDown <- function(input, to = 10) {
 #'
 #' @param recipient 'Screen' displays the message on screen, 'Report' appends the message to 'temp_log.txt', 'Warning' appends the message to 'temp_warnings.txt', 'UD' appends the message to 'temp_UD.txt', 'Comment' appends the message to 'temp_comments.txt'. The same message may be appended to multiple recipients at once.
 #' @param line The text to be appended.
-#' @param fish the tag number to which the comment belongs. Only used when recipient = 'Comment'.
+#' @param tag the tag number to which the comment belongs. Only used when recipient = 'Comment'.
 #'
 #' @return No return value, called for side effects.
 #'
 #' @keywords internal
 #'
-appendTo <- function(recipient, line, fish) {
+appendTo <- function(recipient, line, tag) {
   for (i in recipient) {
     if (i == "Screen") {
       if (any(recipient == "Warning"))
@@ -485,13 +523,13 @@ appendTo <- function(recipient, line, fish) {
         file = paste(tempdir(), "temp_warnings.txt", sep = "/"),
         append = file.exists(paste(tempdir(), "temp_warnings.txt", sep = "/")))
     }
-    if (i == "UD") {
+    if (i == "UD") { # nocov start
       write(line,
         file = paste(tempdir(), "temp_UD.txt", sep = "/"),
         append = file.exists(paste(tempdir(), "temp_UD.txt", sep = "/")))
-    }
+    } # nocov end
     if (i == "Comment") {
-      write(paste(fish, line, sep = "\t"),
+      write(paste(tag, line, sep = "\t"),
         file = paste(tempdir(), "temp_comments.txt", sep = "/"),
         append = file.exists(paste(tempdir(), "temp_comments.txt", sep = "/")))
     }
@@ -1090,7 +1128,7 @@ distancesMatrix <- function(t.layer, starters = NULL, targets = starters,
   dist.mat <- data.frame(gdistance::costDistance(t.layer, starters, targets))
   if (any(dist.mat == Inf)) {
     warning("At least one station is completely blocked off from the remaining stations by land. Filling
-the respective fields with NA. If your fish was expected to travel around the areas present
+the respective fields with NA. If your animals were expected to travel around the areas present
 in the shape file, consider applying a 'buffer' when calculating the transition layer. This
 will artificially add water space around the shape file.", call. = FALSE)
     dist.mat[dist.mat == Inf] <- NA

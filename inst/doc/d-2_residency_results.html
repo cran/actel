@@ -12,7 +12,7 @@
 
 <meta name="author" content="Hugo Flávio" />
 
-<meta name="date" content="2020-08-01" />
+<meta name="date" content="2020-09-11" />
 
 <title>4.2) Inspecting the residency() results</title>
 
@@ -215,7 +215,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">4.2) Inspecting the residency() results</h1>
 <h4 class="author">Hugo Flávio</h4>
-<h4 class="date">2020-08-01</h4>
+<h4 class="date">2020-09-11</h4>
 
 
 
@@ -254,7 +254,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <p>The results compiled by the residency() function include <a href="b-2_explore_results.html">those of the explore() function</a>. To keep the vignettes shorter, I will only detail <strong>new</strong> outputs here:</p>
 <div id="status.df" class="section level3">
 <h3>status.df</h3>
-<p>The <code>status.df</code> is a data frame that combines both the timetable data and your biometrics into a single, organised table (see <a href="d-1_residency_processes.html#compiling-a-timetable">“Compiling a timetable”</a>). If you have stored any comments during the analysis process, they will show up in a reserved column in this table. The <code>status.df</code> also contains some more summary information for each fish. This table can be quite big, so it may be a good idea to use <code>head(status.df)</code> the first time you look at it.</p>
+<p>The <code>status.df</code> is a data frame that combines both the timetable data and your biometrics into a single, organised table (see <a href="d-1_residency_processes.html#compiling-a-timetable">“Compiling a timetable”</a>). If you have stored any comments during the analysis process, they will show up in a reserved column in this table. The <code>status.df</code> also contains some more summary information for each animal. This table can be quite big, so it may be a good idea to use <code>head(status.df)</code> the first time you look at it.</p>
 </div>
 <div id="section.movements" class="section level3">
 <h3>section.movements</h3>
@@ -357,7 +357,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </div>
 <div id="residency.list" class="section level3">
 <h3>residency.list</h3>
-<p>The <code>residency.list</code> contains a table for each of your fish, detailing where it was since its first valid detection to its last. Here is an example of the residency list produced based on the section movements above:</p>
+<p>The <code>residency.list</code> contains a table for each of the target tags, detailing where it was since its first valid detection to its last. Here is an example of the residency list produced based on the section movements above:</p>
 <table>
 <thead>
 <tr class="header">
@@ -427,15 +427,15 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </div>
 <div id="array.times" class="section level3">
 <h3>array.times</h3>
-<p>This table contains information on the all arrival times for each fish, at each array. It is used to produce circular graphics in the report.</p>
+<p>This table contains information on the all arrival times for each tag, at each array. It is used to produce circular graphics in the report.</p>
 </div>
 <div id="section.times" class="section level3">
 <h3>section.times</h3>
-<p><code>section.times</code> is a list that contains two tables. The first one has all the arrival times for each fish, at each section, and the second has all the departure times, sorted in the same fashion. These are used to produce circular graphics in the report.</p>
+<p><code>section.times</code> is a list that contains two tables. The first one has all the arrival times for each tag, at each section, and the second has all the departure times, sorted in the same fashion. These are used to produce circular graphics in the report.</p>
 </div>
-<div id="daily.ratios" class="section level3">
-<h3>daily.ratios</h3>
-<p>The daily.ratios contains detailed information on the time spent at each location, per day, for each of your fish. These tables can be quite long. Here is an example:</p>
+<div id="time.ratios" class="section level3">
+<h3>time.ratios</h3>
+<p>The <code>time.ratios</code> contains detailed information on the time spent at each location, per day (or hour, if <code>timestep = &quot;hours&quot;)</code> , for each of the target tags. These tables can be quite long. Here is an example:</p>
 <table>
 <thead>
 <tr class="header">
@@ -540,15 +540,15 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </table>
 <p>(Columns and rows were hidden so the table fits better in the page)</p>
 </div>
-<div id="daily.locations" class="section level3">
-<h3>daily.locations</h3>
-<p>The <code>daily.locations</code> is a data frame showing the place where each fish spent the most time during each day. It is a crucial middle step between the daily ratios and the global ratios.</p>
+<div id="time.locations" class="section level3">
+<h3>time.locations</h3>
+<p>The <code>time.locations</code> is a data frame showing the place where each tag spent the most time during each day. It is a crucial middle step between the <code>time.ratios</code> and the <code>global.ratios</code>.</p>
 </div>
 <div id="global.ratios" class="section level3">
 <h3>global.ratios</h3>
 <p>The global ratios is a list containing two elements:</p>
 <ol style="list-style-type: decimal">
-<li>The absolute number of fish at each location in each day:</li>
+<li>The absolute number of tags at each location in each day/hour:</li>
 </ol>
 <table>
 <thead>
@@ -637,7 +637,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </tbody>
 </table>
 <ol start="2" style="list-style-type: decimal">
-<li>The percentage of fish at each location in each day:</li>
+<li>The percentage of tags at each location in each day/hour:</li>
 </ol>
 <table>
 <thead>
@@ -726,9 +726,13 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </tbody>
 </table>
 </div>
+</div>
+<div id="group.ratios" class="section level2">
+<h2>group.ratios</h2>
+<p>The group ratios are lists similar to the <code>global.ratios</code>, but where the data has been split by the groups you defined in the biometrics. This allows you to compare the residency patterns of your different groups!</p>
 <div id="last.seen" class="section level3">
 <h3>last.seen</h3>
-<p>The <code>last.seen</code> is a simple summary table, showing how many fish from each group were last seen at each section, with an extra column for fish that were never detected:</p>
+<p>The <code>last.seen</code> is a simple summary table, showing how many tags from each group were last seen at each section, with an extra column for tags that were never detected:</p>
 <table>
 <thead>
 <tr class="header">
@@ -786,27 +790,27 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <ol style="list-style-type: decimal">
 <li><strong>Array efficiency</strong></li>
 </ol>
-<p>Here you can see how efficient your receiver arrays were at detecting the fish that moved past them. These results can also be found in the <code>efficiency</code> object, which is in your results in R. If you supplied replicates, the results of the intra-array estimations will also show up here.</p>
+<p>Here you can see how efficient your receiver arrays were at detecting the tags that moved past them. These results can also be found in the <code>efficiency</code> object, which is in your results in R. If you supplied replicates, the results of the intra-array estimations will also show up here.</p>
 <ol start="2" style="list-style-type: decimal">
 <li><strong>Last seen</strong></li>
 </ol>
-<p>The sections where the fish were last seen is displayed both as a table and a figure, both of which use the content of the <code>last.seen</code> object, which is in your results in R.</p>
+<p>The sections where the tags were last detected is displayed both as a table and a figure, both of which use the content of the <code>last.seen</code> object, which is in your results in R.</p>
 <ol start="3" style="list-style-type: decimal">
 <li><strong>Average array arrival times</strong></li>
 </ol>
-<p>For each of your study area’s arrays, a circular plot will be drawn with all the arrival times of each fish. The fish are grouped by the groups listed in the <em>biometrics.csv</em> file. These plots are saved in .svg format in the Report folder, so you can easily use them elsewhere, if needed.</p>
+<p>For each of your study area’s arrays, a circular plot will be drawn with all the arrival times of each tag. The tags are grouped by the groups listed in the <em>biometrics.csv</em> file. These plots are saved in .svg format in the Report folder, so you can easily use them elsewhere, if needed.</p>
 <ol start="4" style="list-style-type: decimal">
 <li><strong>Time details per section</strong></li>
 </ol>
-<p>This section is divided in two main subsections: arrivals and departures. A plot with the days when fish arrived/departed each of the sections is made, as well as circular plots with all the times-of-day recorded for each fish arriving/departing each section. These graphics are all based in the <code>section.times</code> object.</p>
+<p>This section is divided in two main subsections: arrivals and departures. A plot with the days when tags arrived/departed each of the sections is made, as well as circular plots with all the times-of-day recorded for each tag arriving/departing each section. These graphics are all based in the <code>section.times</code> object.</p>
 <ol start="5" style="list-style-type: decimal">
 <li><strong>Section progression</strong></li>
 </ol>
-<p>This section has a graphic representation of the data present in the <code>global.ratios</code> object. It shows how the fish have distributed across your study area as the days pass by.</p>
+<p>This section has a graphic representation of the data present in the <code>global.ratios</code> object. It shows how the tags have distributed across your study area as the days pass by.</p>
 <ol start="6" style="list-style-type: decimal">
 <li><strong>Individual residency plots</strong></li>
 </ol>
-<p>Here you can find a graphic representation of the data present in the <code>daily.ratios</code> object. It shows, for each fish, how much time they spent at each location at each day. All plots start and end in the same day, so it is easy to compare the behaviour of each fish to the remaining.</p>
+<p>Here you can find a graphic representation of the data present in the <code>daily.ratios</code> object. It shows how much time each tag has spent at each location for each day/hour. All plots start and end in the same day, so it is easy to compare the behaviour of different animals.</p>
 <p><a href="#">Back to top.</a></p>
 </div>
 </div>

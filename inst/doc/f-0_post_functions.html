@@ -12,7 +12,7 @@
 
 <meta name="author" content="Hugo Flávio" />
 
-<meta name="date" content="2020-08-01" />
+<meta name="date" content="2020-09-11" />
 
 <title>6.0) Beyond the three main analyses</title>
 
@@ -301,7 +301,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">6.0) Beyond the three main analyses</h1>
 <h4 class="author">Hugo Flávio</h4>
-<h4 class="date">2020-08-01</h4>
+<h4 class="date">2020-09-11</h4>
 
 
 
@@ -338,15 +338,26 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div id="expanding-on-what-actel-can-give-you" class="section level2">
 <h2>Expanding on what actel can give you</h2>
 <p>First of all, congratulations! If you are reading this page, you must have successfully ran an actel analysis on your data. I hope you have found the results useful :)</p>
-<p>Here you will find some additional examples of things you can do using the output of your analysis. As actel connects to other packages and expands its capacities, so will this page.</p>
-<!-- ## Calculating utilization distribution areas and space-use overlaps
-
-The R package RSP ([github](https://github.com/YuriNiella/RSP)) allows you to run spatial analyses on the habitat use of your fish using the output of your actel analysis. With the RSP toolkit you can analyse the fine scale movements of aquatic animals while accounting for the surrounding land masses. The animal movements between detections are recreated to have occurred exclusively in water and the utilization distribution areas are limited by the land contours, providing realistic estimations of space use. 
-
-Depending on the research questions being addressed the utilization distribution areas can be calculated for the entire monitoring periods, or in fine-scale according to fixed temporal intervals in hours (timeframes). This approach allows spatial ecologists to use the outputs from such fine scale space use models (areas of use, or between-group overlap frequencies) as input for further statistical analysis.
-
-This is a great R package, so make sure to go check it out!
- -->
+<p>Here you will find some additional examples of things you can do using the output of your analysis. As actel connects to other packages and expands its capacities, so will this page. Because the page is getting a bit long already, here is a list of the subsections you will find here:</p>
+<ol style="list-style-type: decimal">
+<li><a href="#calculating-utilization-distribution-areas-and-space-use-overlaps">Utilization distribution areas</a></li>
+<li><a href="#calculating-efficiency-ranges">Calculating efficiency ranges</a></li>
+<li><a href="#plotting-personalised-circular-plots">Plotting personalised circular plots</a></li>
+<li><a href="#plotting-personalised-detection-plots">Plotting personalised detection plots</a></li>
+<li><a href="#plotting-sensor-data-for-individual-tags">Plotting sensor data for individual tags</a></li>
+<li><a href="#plotting-movements-for-multiple-tags-at-the-same-time">Plotting movements for multiple tags at the same time</a></li>
+<li><a href="#extracting-detailed-array-level-movement-speeds">Extracting detailed array-level movement speeds</a></li>
+<li><a href="#simultaneous-and-cumulative-presence-at-one-or-more-arrays">Simultaneous and cumulative presence at one or more arrays</a></li>
+<li><a href="#plotting-individual-residency-for-individual-tags">Plotting individual residency for individual tags</a></li>
+<li><a href="#plotting-global-and-group-residency">Plotting global (and group) residency!</a></li>
+<li><a href="#what-would-you-like-to-see-here">What would you like to see here?</a></li>
+</ol>
+</div>
+<div id="calculating-utilization-distribution-areas-and-space-use-overlaps" class="section level2">
+<h2>Calculating utilization distribution areas and space-use overlaps</h2>
+<p>The R package RSP (<a href="https://github.com/YuriNiella/RSP#rsp">available here</a>) allows you to run spatial analyses on the habitat use of your animals using the output of your actel analysis. With the RSP toolkit you can analyse the fine scale movements of aquatic animals while accounting for the surrounding land masses. The animal movements between detections are recreated to have occurred exclusively in water and the utilization distribution areas are limited by the land contours, providing realistic estimations of space use.</p>
+<p>Depending on the research questions being addressed the utilization distribution areas can be calculated for the entire monitoring periods, or in fine-scale according to fixed temporal intervals in hours (timeframes). This approach allows spatial ecologists to use the outputs from such fine scale space use models (areas of use, or between-group overlap frequencies) as input for further statistical analysis.</p>
+<p>This is a great R package, so make sure to go check it out!</p>
 </div>
 <div id="calculating-efficiency-ranges" class="section level2">
 <h2>Calculating efficiency ranges</h2>
@@ -402,23 +413,25 @@ This is a great R package, so make sure to go check it out!
 <a class="sourceLine" id="cb4-19" title="19"><span class="kw">advEfficiency</span>(x)</a></code></pre></div>
 <p><code>advEfficiency</code> comes with some additional parameters that will help you get the results exactly as you need them. Find more by running <code>?advEfficiency</code>. The advEfficiency manual page also includes additional information on how the calculations are made, and how you could explain them in a paper, if you need to!</p>
 </div>
-<div id="drawing-personalized-circular-plots" class="section level2">
-<h2>Drawing personalized circular plots</h2>
+<div id="plotting-personalised-circular-plots" class="section level2">
+<h2>Plotting personalised circular plots</h2>
 <p>Circular plots are a great way to display your results in a publication. Examples include differences between groups or between arrival points at different places. Although actel provides circular plots with its analyses, these default plots may not be exactly what you are looking for. As such, I created the function <code>plotTimes</code>, to help you get your plot just right.</p>
 <p>You can prepare the input for plotTimes by using two other functions (which may also be useful on their own): <code>getTimes</code> and <code>timesToCircular</code>.</p>
-<p>For example, if you want to plot the arrival times for all your fish at two arrays:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1"><span class="co"># Extrat the times from your &#39;results&#39; object</span></a>
-<a class="sourceLine" id="cb5-2" title="2">x &lt;-<span class="st"> </span><span class="kw">getTimes</span>(results, <span class="dt">locations =</span> <span class="kw">c</span>(<span class="st">&quot;A&quot;</span>, <span class="st">&quot;B&quot;</span>))</a>
-<a class="sourceLine" id="cb5-3" title="3"></a>
-<a class="sourceLine" id="cb5-4" title="4"><span class="co"># Convert the times to a circular object</span></a>
-<a class="sourceLine" id="cb5-5" title="5">x &lt;-<span class="st"> </span><span class="kw">timesToCircular</span>(x)</a>
-<a class="sourceLine" id="cb5-6" title="6"></a>
-<a class="sourceLine" id="cb5-7" title="7"><span class="co"># and plot it</span></a>
-<a class="sourceLine" id="cb5-8" title="8"><span class="kw">plotTimes</span>(x)</a>
-<a class="sourceLine" id="cb5-9" title="9"></a>
-<a class="sourceLine" id="cb5-10" title="10"><span class="co"># You can include a night period by using the night argument, e.g.:</span></a>
-<a class="sourceLine" id="cb5-11" title="11"><span class="kw">plotTimes</span>(x, <span class="dt">night =</span> <span class="kw">c</span>(<span class="st">&quot;20:00&quot;</span>, <span class="st">&quot;06:00&quot;</span>))</a></code></pre></div>
-<p>This will plot two data series (one for array “A” and one for array “B”), with all your fish pooled together.</p>
+<p>For example, if you want to plot the arrival times for all your tags at two arrays:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1"><span class="co"># Assuming you saved the output of an actel analysis as &#39;results&#39;,</span></a>
+<a class="sourceLine" id="cb5-2" title="2"><span class="co"># you can use getTimes to extract the times you want. You can specify</span></a>
+<a class="sourceLine" id="cb5-3" title="3"><span class="co"># which locations you are interested in with the argument locations.</span></a>
+<a class="sourceLine" id="cb5-4" title="4">x &lt;-<span class="st"> </span><span class="kw">getTimes</span>(results, <span class="dt">locations =</span> <span class="kw">c</span>(<span class="st">&quot;A&quot;</span>, <span class="st">&quot;B&quot;</span>))</a>
+<a class="sourceLine" id="cb5-5" title="5"></a>
+<a class="sourceLine" id="cb5-6" title="6"><span class="co"># Then, convert the times to a circular object</span></a>
+<a class="sourceLine" id="cb5-7" title="7">x &lt;-<span class="st"> </span><span class="kw">timesToCircular</span>(x)</a>
+<a class="sourceLine" id="cb5-8" title="8"></a>
+<a class="sourceLine" id="cb5-9" title="9"><span class="co"># and plot it!</span></a>
+<a class="sourceLine" id="cb5-10" title="10"><span class="kw">plotTimes</span>(x)</a>
+<a class="sourceLine" id="cb5-11" title="11"></a>
+<a class="sourceLine" id="cb5-12" title="12"><span class="co"># You can include a night period by using the night argument, e.g.:</span></a>
+<a class="sourceLine" id="cb5-13" title="13"><span class="kw">plotTimes</span>(x, <span class="dt">night =</span> <span class="kw">c</span>(<span class="st">&quot;20:00&quot;</span>, <span class="st">&quot;06:00&quot;</span>))</a></code></pre></div>
+<p>This will plot two data series (one for array “A” and one for array “B”), with all the tags pooled together.</p>
 <p>However, if you want to plot the arrival times at a specific array per group, you could do the following:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1">x &lt;-<span class="st"> </span><span class="kw">getTimes</span>(results, <span class="dt">locations =</span> <span class="st">&quot;A&quot;</span>)</a>
 <a class="sourceLine" id="cb6-2" title="2">x &lt;-<span class="st"> </span><span class="kw">timesToCircular</span>(x, <span class="dt">by.group =</span> <span class="ot">TRUE</span>)</a>
@@ -451,86 +464,165 @@ This is a great R package, so make sure to go check it out!
 <a class="sourceLine" id="cb7-20" title="20"><span class="kw">plotTimes</span>(x, <span class="dt">col =</span> <span class="kw">c</span>(<span class="st">&quot;blue&quot;</span>, <span class="st">&quot;orange&quot;</span>), <span class="dt">title =</span> <span class="st">&quot;A plot of two datasets!&quot;</span>)</a></code></pre></div>
 <p>You can expand on the example above to plot different groups too. Once you have finished your plot, you can save it to an svg file by adding a name to the ‘file’ argument.</p>
 </div>
-<div id="drawing-personalised-detection-plots" class="section level2">
-<h2>Drawing personalised detection plots</h2>
-<p>Detection plots provide a lot of information. However, the default plots printed in the reports may be to small to analyse, or perhaps you would like to edit them to use in a presentation or paper. <code>plotMoves()</code> is the function you are looking for.</p>
+<div id="plotting-personalised-detection-plots" class="section level2">
+<h2>Plotting personalised detection plots</h2>
+<p>Detection plots provide a lot of information. However, the default plots printed in the reports may be to small to analyse, or perhaps you would like to edit them to use in a presentation or paper. <code>plotDetections()</code> is the function you are looking for.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" title="1"><span class="co"># Assuming you saved the output of an actel analysis as &#39;results&#39;,</span></a>
 <a class="sourceLine" id="cb8-2" title="2"><span class="co"># you can then plot the detections for single individuals. Imagine</span></a>
 <a class="sourceLine" id="cb8-3" title="3"><span class="co"># you want to see tag &#39;R64K-1995&#39;. You can run:</span></a>
-<a class="sourceLine" id="cb8-4" title="4"><span class="kw">plotMoves</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>)</a>
+<a class="sourceLine" id="cb8-4" title="4"><span class="kw">plotDetections</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>)</a>
 <a class="sourceLine" id="cb8-5" title="5"></a>
 <a class="sourceLine" id="cb8-6" title="6"><span class="co"># plotMoves comes with some additional personalisation arguments,</span></a>
 <a class="sourceLine" id="cb8-7" title="7"><span class="co"># such as title, or array.alias. array.alias allows you to replace</span></a>
 <a class="sourceLine" id="cb8-8" title="8"><span class="co"># default name of an array with a name of your choosing, e.g.:</span></a>
-<a class="sourceLine" id="cb8-9" title="9"><span class="kw">plotMoves</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>, <span class="dt">array.alias =</span> <span class="kw">c</span>(<span class="st">&quot;River1&quot;</span> =<span class="st"> &quot;My_first_array&quot;</span>))</a>
+<a class="sourceLine" id="cb8-9" title="9"><span class="kw">plotDetections</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>, <span class="dt">array.alias =</span> <span class="kw">c</span>(<span class="st">&quot;River1&quot;</span> =<span class="st"> &quot;My_first_array&quot;</span>))</a>
 <a class="sourceLine" id="cb8-10" title="10"></a>
 <a class="sourceLine" id="cb8-11" title="11"><span class="co"># additionally, if you give the same name to multiple arrays, they</span></a>
 <a class="sourceLine" id="cb8-12" title="12"><span class="co"># will be combined automatically! e.g.:</span></a>
-<a class="sourceLine" id="cb8-13" title="13"><span class="kw">plotMoves</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>, <span class="dt">array.alias =</span> <span class="kw">c</span>(<span class="st">&quot;River1&quot;</span> =<span class="st"> &quot;River&quot;</span>, <span class="st">&quot;River2&quot;</span> =<span class="st"> &quot;River&quot;</span>))</a>
+<a class="sourceLine" id="cb8-13" title="13"><span class="kw">plotDetections</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>, <span class="dt">array.alias =</span> <span class="kw">c</span>(<span class="st">&quot;River1&quot;</span> =<span class="st"> &quot;River&quot;</span>, <span class="st">&quot;River2&quot;</span> =<span class="st"> &quot;River&quot;</span>))</a>
 <a class="sourceLine" id="cb8-14" title="14"></a>
-<a class="sourceLine" id="cb8-15" title="15"><span class="co"># You can find all the details about plotMoves arguments by running</span></a>
-<a class="sourceLine" id="cb8-16" title="16">?plotMoves</a>
+<a class="sourceLine" id="cb8-15" title="15"><span class="co"># You can find all the details about plotDetections arguments by running</span></a>
+<a class="sourceLine" id="cb8-16" title="16">?plotDetections</a>
 <a class="sourceLine" id="cb8-17" title="17"></a>
-<a class="sourceLine" id="cb8-18" title="18"><span class="co"># plotMoves returns a ggplot object, which means you can edit it further!</span></a>
+<a class="sourceLine" id="cb8-18" title="18"><span class="co"># plotDetections returns a ggplot object, which means you can edit it further!</span></a>
 <a class="sourceLine" id="cb8-19" title="19"><span class="co"># Very simple example:</span></a>
 <a class="sourceLine" id="cb8-20" title="20"><span class="kw">library</span>(ggplot2)</a>
-<a class="sourceLine" id="cb8-21" title="21">p &lt;-<span class="st"> </span><span class="kw">plotMoves</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>)</a>
-<a class="sourceLine" id="cb8-22" title="22">p &lt;-<span class="st"> </span>p <span class="op">+</span><span class="st"> </span><span class="kw">xlab</span>(<span class="st">&quot;changing the label after running plotMoves is possible!&quot;</span>)</a>
+<a class="sourceLine" id="cb8-21" title="21">p &lt;-<span class="st"> </span><span class="kw">plotDetections</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>)</a>
+<a class="sourceLine" id="cb8-22" title="22">p &lt;-<span class="st"> </span>p <span class="op">+</span><span class="st"> </span><span class="kw">xlab</span>(<span class="st">&quot;changing the label after running plotDetections is possible!&quot;</span>)</a>
 <a class="sourceLine" id="cb8-23" title="23">p</a>
 <a class="sourceLine" id="cb8-24" title="24"></a>
 <a class="sourceLine" id="cb8-25" title="25"><span class="co"># Of course, you can also save your new plots using ggsave.</span></a></code></pre></div>
 </div>
+<div id="plotting-sensor-data-for-individual-tags" class="section level2">
+<h2>Plotting sensor data for individual tags</h2>
+<p>When your tags have sensor data, these data will be automatically plotted in the report (just like the detections). However, similarly to <code>plotDetections()</code>, you can use <code>plotSensors()</code> to plot the sensor data for a specific tag.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" title="1"><span class="co"># Assuming you saved the output of an actel analysis as &#39;results&#39;,</span></a>
+<a class="sourceLine" id="cb9-2" title="2"><span class="co"># you can then plot the sensor data for single individuals. For example:</span></a>
+<a class="sourceLine" id="cb9-3" title="3"><span class="kw">plotSensors</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>)</a>
+<a class="sourceLine" id="cb9-4" title="4"></a>
+<a class="sourceLine" id="cb9-5" title="5"><span class="co"># You can also choose to plot only some of the sensors by selecting</span></a>
+<a class="sourceLine" id="cb9-6" title="6"><span class="co"># a specific unit with the &#39;sensor&#39; argument!</span></a></code></pre></div>
+</div>
+<div id="plotting-movements-for-multiple-tags-at-the-same-time" class="section level2">
+<h2>Plotting movements for multiple tags at the same time</h2>
+<p>Sometimes it can be useful to compare the movements of multiple tags at the same time. Comparing individual detection plots works, but being able to overlap plots would be much nicer! That’s exactly why I created the <code>plotMoves()</code> function. This function allows you to overlap the movements of multiple tags.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" title="1"><span class="co"># Assuming you saved the output of an actel analysis as &#39;results&#39;,</span></a>
+<a class="sourceLine" id="cb10-2" title="2"><span class="co"># you can then plot the moves of multiple tags by running:</span></a>
+<a class="sourceLine" id="cb10-3" title="3"><span class="kw">plotMoves</span>(results, <span class="dt">tags =</span> <span class="kw">c</span>(<span class="st">&quot;R64K-1995&quot;</span>, <span class="st">&quot;R64K-2001&quot;</span>))</a>
+<a class="sourceLine" id="cb10-4" title="4"></a>
+<a class="sourceLine" id="cb10-5" title="5"><span class="co"># If you get any tag number wrong, actel will let you know.</span></a></code></pre></div>
+</div>
 <div id="extracting-detailed-array-level-movement-speeds" class="section level2">
 <h2>Extracting detailed array-level movement speeds</h2>
-<p>If you have included a valid distances matrix in your analysis, then there is a lot of valuable information scattered throughout the fish movements. While this information is summarised at the section level in the <code>status.df</code> object (for <code>migration()</code> and <code>residency()</code> analyses), maybe you would like to have a look at the event-to-event values. To avoid having to go through each movement table individually, you can use the function <code>getSpeeds()</code>:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" title="1"><span class="co"># As usual, lets assume you saved the output of an actel analysis as &#39;results&#39;.</span></a>
-<a class="sourceLine" id="cb9-2" title="2"></a>
-<a class="sourceLine" id="cb9-3" title="3"><span class="co"># Running getSpeeds on the results will return all the recorded speeds, for</span></a>
-<a class="sourceLine" id="cb9-4" title="4"><span class="co"># every fish.</span></a>
-<a class="sourceLine" id="cb9-5" title="5"><span class="kw">getSpeeds</span>(results)</a>
-<a class="sourceLine" id="cb9-6" title="6"></a>
-<a class="sourceLine" id="cb9-7" title="7"><span class="co"># However, you can trim this output by using the remaining arguments in getSpeeds().</span></a>
-<a class="sourceLine" id="cb9-8" title="8"></a>
-<a class="sourceLine" id="cb9-9" title="9"><span class="co"># For example, return only the speeds between neighbouring arrays by using:</span></a>
-<a class="sourceLine" id="cb9-10" title="10"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb9-11" title="11"></a>
-<a class="sourceLine" id="cb9-12" title="12"><span class="co"># This will only return speeds when the respective movement did not imply</span></a>
-<a class="sourceLine" id="cb9-13" title="13"><span class="co"># skipping an ALS array.</span></a>
-<a class="sourceLine" id="cb9-14" title="14"></a>
-<a class="sourceLine" id="cb9-15" title="15"><span class="co"># You can further trim these results by choosing only events in a specific direction:</span></a>
-<a class="sourceLine" id="cb9-16" title="16"></a>
-<a class="sourceLine" id="cb9-17" title="17"><span class="co"># To display only speeds in a forward direction (as specified by the study area structure)</span></a>
-<a class="sourceLine" id="cb9-18" title="18"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;forward&quot;</span>)</a>
-<a class="sourceLine" id="cb9-19" title="19"></a>
-<a class="sourceLine" id="cb9-20" title="20"><span class="co"># Or only in the backwards direction</span></a>
-<a class="sourceLine" id="cb9-21" title="21"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;backward&quot;</span>)</a>
-<a class="sourceLine" id="cb9-22" title="22"></a>
-<a class="sourceLine" id="cb9-23" title="23"><span class="co"># The default is &quot;all&quot;</span></a>
-<a class="sourceLine" id="cb9-24" title="24"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>)</a>
-<a class="sourceLine" id="cb9-25" title="25"></a>
-<a class="sourceLine" id="cb9-26" title="26"><span class="co"># A little side note on directions: </span></a>
-<a class="sourceLine" id="cb9-27" title="27"><span class="co"># If you stated in the spatial.txt file that &quot;A -- B&quot;, then A is considered to </span></a>
-<a class="sourceLine" id="cb9-28" title="28"><span class="co"># come before B, and thus a movement from A to B is a forward movement.</span></a>
-<a class="sourceLine" id="cb9-29" title="29"><span class="co"># Consequently a movement from B to A is considered a backwards movement.</span></a>
-<a class="sourceLine" id="cb9-30" title="30"><span class="co">#</span></a>
-<a class="sourceLine" id="cb9-31" title="31"><span class="co"># Note that movements between parallel arrays are not forward nor backward,</span></a>
-<a class="sourceLine" id="cb9-32" title="32"><span class="co"># and the respective speeds will only be displayed if type = &quot;all&quot;.</span></a>
-<a class="sourceLine" id="cb9-33" title="33"></a>
-<a class="sourceLine" id="cb9-34" title="34"><span class="co"># Finally, you can choose how many events per fish you want to see:</span></a>
-<a class="sourceLine" id="cb9-35" title="35"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>, <span class="dt">n.events =</span> <span class="st">&quot;first&quot;</span>) <span class="co"># default</span></a>
-<a class="sourceLine" id="cb9-36" title="36"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>, <span class="dt">n.events =</span> <span class="st">&quot;all&quot;</span>)</a>
-<a class="sourceLine" id="cb9-37" title="37"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>, <span class="dt">n.events =</span> <span class="st">&quot;last&quot;</span>)</a>
-<a class="sourceLine" id="cb9-38" title="38"></a>
-<a class="sourceLine" id="cb9-39" title="39"><span class="co"># The n.events controls how many instances of a specific movement event you would like to see.</span></a>
-<a class="sourceLine" id="cb9-40" title="40"><span class="co"># If a fish moved twice from A to B, &quot;first&quot; will return only the first speed, &quot;last&quot; will</span></a>
-<a class="sourceLine" id="cb9-41" title="41"><span class="co"># return only the last speed, and &quot;all&quot; will return both.</span></a>
-<a class="sourceLine" id="cb9-42" title="42"><span class="co"># Note that moving from A to B is not the same as moving from B to A, and both will be treated</span></a>
-<a class="sourceLine" id="cb9-43" title="43"><span class="co"># separately by getSpeeds.</span></a></code></pre></div>
-<p>Because speeds have many underlying variables (from where, to where, which fish, etc.), there is no pre-made plot function for speeds. However, the output of <code>getSpeeds()</code> is structured in a way that should make it easy for you to jump to ggplot2 and start drawing your plots, your way :)</p>
+<p>If you have included a valid distances matrix in your analysis, then there is a lot of valuable information scattered throughout the tag movements. While this information is summarised at the section level in the <code>status.df</code> object (for <code>migration()</code> and <code>residency()</code> analyses), maybe you would like to have a look at the event-to-event values. To avoid having to go through each movement table individually, you can use the function <code>getSpeeds()</code>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" title="1"><span class="co"># As usual, lets assume you saved the output of an actel analysis as &#39;results&#39;.</span></a>
+<a class="sourceLine" id="cb11-2" title="2"></a>
+<a class="sourceLine" id="cb11-3" title="3"><span class="co"># Running getSpeeds on the results will return all the recorded speeds, for</span></a>
+<a class="sourceLine" id="cb11-4" title="4"><span class="co"># every animal.</span></a>
+<a class="sourceLine" id="cb11-5" title="5"><span class="kw">getSpeeds</span>(results)</a>
+<a class="sourceLine" id="cb11-6" title="6"></a>
+<a class="sourceLine" id="cb11-7" title="7"><span class="co"># However, you can trim this output by using the remaining arguments in getSpeeds().</span></a>
+<a class="sourceLine" id="cb11-8" title="8"></a>
+<a class="sourceLine" id="cb11-9" title="9"><span class="co"># For example, return only the speeds between neighbouring arrays by using:</span></a>
+<a class="sourceLine" id="cb11-10" title="10"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb11-11" title="11"></a>
+<a class="sourceLine" id="cb11-12" title="12"><span class="co"># This will only return speeds when the respective movement did not imply</span></a>
+<a class="sourceLine" id="cb11-13" title="13"><span class="co"># skipping an ALS array.</span></a>
+<a class="sourceLine" id="cb11-14" title="14"></a>
+<a class="sourceLine" id="cb11-15" title="15"><span class="co"># You can further trim these results by choosing only events in a specific direction:</span></a>
+<a class="sourceLine" id="cb11-16" title="16"></a>
+<a class="sourceLine" id="cb11-17" title="17"><span class="co"># To display only speeds in a forward direction (as specified by the study area structure)</span></a>
+<a class="sourceLine" id="cb11-18" title="18"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;forward&quot;</span>)</a>
+<a class="sourceLine" id="cb11-19" title="19"></a>
+<a class="sourceLine" id="cb11-20" title="20"><span class="co"># Or only in the backwards direction</span></a>
+<a class="sourceLine" id="cb11-21" title="21"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;backward&quot;</span>)</a>
+<a class="sourceLine" id="cb11-22" title="22"></a>
+<a class="sourceLine" id="cb11-23" title="23"><span class="co"># The default is &quot;all&quot;</span></a>
+<a class="sourceLine" id="cb11-24" title="24"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>)</a>
+<a class="sourceLine" id="cb11-25" title="25"></a>
+<a class="sourceLine" id="cb11-26" title="26"><span class="co"># A little side note on directions: </span></a>
+<a class="sourceLine" id="cb11-27" title="27"><span class="co"># If you stated in the spatial.txt file that &quot;A -- B&quot;, then A is considered to </span></a>
+<a class="sourceLine" id="cb11-28" title="28"><span class="co"># come before B, and thus a movement from A to B is a forward movement.</span></a>
+<a class="sourceLine" id="cb11-29" title="29"><span class="co"># Consequently a movement from B to A is considered a backwards movement.</span></a>
+<a class="sourceLine" id="cb11-30" title="30"><span class="co">#</span></a>
+<a class="sourceLine" id="cb11-31" title="31"><span class="co"># Note that movements between parallel arrays are not forward nor backward,</span></a>
+<a class="sourceLine" id="cb11-32" title="32"><span class="co"># and the respective speeds will only be displayed if type = &quot;all&quot;.</span></a>
+<a class="sourceLine" id="cb11-33" title="33"></a>
+<a class="sourceLine" id="cb11-34" title="34"><span class="co"># Finally, you can choose how many events per tag you want to see:</span></a>
+<a class="sourceLine" id="cb11-35" title="35"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>, <span class="dt">n.events =</span> <span class="st">&quot;first&quot;</span>) <span class="co"># default</span></a>
+<a class="sourceLine" id="cb11-36" title="36"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>, <span class="dt">n.events =</span> <span class="st">&quot;all&quot;</span>)</a>
+<a class="sourceLine" id="cb11-37" title="37"><span class="kw">getSpeeds</span>(results, <span class="dt">direct =</span> <span class="ot">TRUE</span>, <span class="dt">type =</span> <span class="st">&quot;all&quot;</span>, <span class="dt">n.events =</span> <span class="st">&quot;last&quot;</span>)</a>
+<a class="sourceLine" id="cb11-38" title="38"></a>
+<a class="sourceLine" id="cb11-39" title="39"><span class="co"># The n.events controls how many instances of a specific movement event you would like to see.</span></a>
+<a class="sourceLine" id="cb11-40" title="40"><span class="co"># If a tag moved twice from A to B, &quot;first&quot; will return only the first speed, &quot;last&quot; will</span></a>
+<a class="sourceLine" id="cb11-41" title="41"><span class="co"># return only the last speed, and &quot;all&quot; will return both.</span></a>
+<a class="sourceLine" id="cb11-42" title="42"><span class="co"># Note that moving from A to B is not the same as moving from B to A, and both will be treated</span></a>
+<a class="sourceLine" id="cb11-43" title="43"><span class="co"># separately by getSpeeds.</span></a></code></pre></div>
+<p>Because speeds have many underlying variables (from where, to where, which tag, etc.), there is no pre-made plot function for speeds. However, the output of <code>getSpeeds()</code> is structured in a way that should make it easy for you to jump to ggplot2 and start drawing your plots, your way :)</p>
+</div>
+<div id="simultaneous-and-cumulative-presence-at-one-or-more-arrays" class="section level2">
+<h2>Simultaneous and cumulative presence at one or more arrays</h2>
+<p>A classic plot in migration analyses is one showing the cumulative arrival of tags at a specific array. The function <code>plotArray()</code> allows you to obtain both the simultaneous presence at an array (if <code>cumulative = FALSE</code>, the default), or the cumulative arrivals at an array (yes, you guessed it, with <code>cumulative = TRUE</code>).</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" title="1"><span class="co"># Assuming you saved the output of an actel analysis as &#39;results&#39;,</span></a>
+<a class="sourceLine" id="cb12-2" title="2"><span class="co"># you can then use plotArray to see the simultaneous or cumulative</span></a>
+<a class="sourceLine" id="cb12-3" title="3"><span class="co"># presence at one or more arrays:</span></a>
+<a class="sourceLine" id="cb12-4" title="4"><span class="kw">plotArray</span>(results, <span class="dt">arrays =</span> <span class="st">&quot;A1&quot;</span>, <span class="dt">cumulative =</span> <span class="ot">FALSE</span>) <span class="co"># will give you the simultaneous presence</span></a>
+<a class="sourceLine" id="cb12-5" title="5"><span class="kw">plotArray</span>(results, <span class="dt">arrays =</span> <span class="st">&quot;A1&quot;</span>, <span class="dt">cumulative =</span> <span class="ot">TRUE</span>) <span class="co"># will give you the cumulative arrivals</span></a>
+<a class="sourceLine" id="cb12-6" title="6"></a>
+<a class="sourceLine" id="cb12-7" title="7"><span class="co"># additionally, you can adjust the time resolution:</span></a>
+<a class="sourceLine" id="cb12-8" title="8"><span class="kw">plotArray</span>(results, <span class="dt">arrays =</span> <span class="st">&quot;A1&quot;</span>, <span class="dt">timestep =</span> <span class="st">&quot;days&quot;</span>) <span class="co"># The default; will aggregate the results by day</span></a>
+<a class="sourceLine" id="cb12-9" title="9"><span class="kw">plotArray</span>(results, <span class="dt">arrays =</span> <span class="st">&quot;A1&quot;</span>, <span class="dt">timestep =</span> <span class="st">&quot;hours&quot;</span>) <span class="co"># Will aggregate the results by hour (takes longer to calculate)</span></a>
+<a class="sourceLine" id="cb12-10" title="10"><span class="kw">plotArray</span>(results, <span class="dt">arrays =</span> <span class="st">&quot;A1&quot;</span>, <span class="dt">timestep =</span> <span class="st">&quot;mins&quot;</span>) <span class="co"># Will aggregate the results by minute (takes way longer to calculate!)</span></a>
+<a class="sourceLine" id="cb12-11" title="11"></a>
+<a class="sourceLine" id="cb12-12" title="12"><span class="co"># Finally, although plotArrays will automatically choose between</span></a>
+<a class="sourceLine" id="cb12-13" title="13"><span class="co"># plotting lines or bars depending on whether the plot is cumulative</span></a>
+<a class="sourceLine" id="cb12-14" title="14"><span class="co"># or not (respectively), you can set a specific plot style with the</span></a>
+<a class="sourceLine" id="cb12-15" title="15"><span class="co"># argument &#39;type&#39;.</span></a></code></pre></div>
+<p>One additional feature of this function is that it allows you to group multiple arrays to obtain combined results! Imagine you had two success arrays: A8 and A9. You can get an aggregated result by running:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb13-1" title="1"><span class="kw">plotArray</span>(results, <span class="dt">arrays =</span> <span class="kw">c</span>(<span class="st">&quot;A8&quot;</span>, <span class="st">&quot;A9&quot;</span>))</a></code></pre></div>
+</div>
+<div id="plotting-individual-residency-for-individual-tags" class="section level2">
+<h2>Plotting individual residency for individual tags</h2>
+<p>When you run a residency analysis, one of the outputs is the individual places where your animal spent most of its time. Like the individual detection plots, these are also drawn automatically for each tag in your report. And like the detection plots, you can also get these ones directly in R! Just use <code>plotResidency()</code>:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb14-1" title="1"><span class="co"># Assuming you saved the output of an actel residency analysis as &#39;results&#39;,</span></a>
+<a class="sourceLine" id="cb14-2" title="2"><span class="co"># you can then plot the residency for single individuals. Imagine you want </span></a>
+<a class="sourceLine" id="cb14-3" title="3"><span class="co"># to see tag &#39;R64K-1995&#39;. You can run:</span></a>
+<a class="sourceLine" id="cb14-4" title="4"><span class="kw">plotResidency</span>(results, <span class="dt">tag =</span> <span class="st">&quot;R64K-1995&quot;</span>)</a>
+<a class="sourceLine" id="cb14-5" title="5"></a>
+<a class="sourceLine" id="cb14-6" title="6"><span class="co"># As usual, you can save the output of plotResidency as an object, and edit</span></a>
+<a class="sourceLine" id="cb14-7" title="7"><span class="co"># it as needed using ggplot commands.</span></a></code></pre></div>
+<p>Remember, you can always access the numerical data behind these plots by inspecting the object <code>time.ratios</code>.</p>
+</div>
+<div id="plotting-global-and-group-residency" class="section level2">
+<h2>Plotting global (and group) residency!</h2>
+<p>Another great output from the residency analysis is the global and group residency ratios (through the objects <code>global.ratios</code> and <code>group.ratios</code>). The function <code>plotRatios()</code> allows you to plot either of these metrics! This function comes with an argument ‘group’. If you do not set a ‘group’, the global ratios will be printed, but if you set a group, then only that group will be plotted. Additionally, you can choose between absolute values (number of animals at each section) and percentage values (proportion of animals at each section), using the argument type.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb15-1" title="1"><span class="co"># Assuming you saved the output of an actel residency analysis as &#39;results&#39;,</span></a>
+<a class="sourceLine" id="cb15-2" title="2"><span class="co"># you can then plot the global ratios:</span></a>
+<a class="sourceLine" id="cb15-3" title="3"><span class="kw">plotRatios</span>(results) <span class="co"># this prints the absolute values</span></a>
+<a class="sourceLine" id="cb15-4" title="4"><span class="kw">plotRatios</span>(results, <span class="dt">type =</span> <span class="st">&quot;percentages&quot;</span>) <span class="co"># this prints the percentage values</span></a>
+<a class="sourceLine" id="cb15-5" title="5"></a>
+<a class="sourceLine" id="cb15-6" title="6"><span class="co"># You can then make these plots only for a specific group, using the group</span></a>
+<a class="sourceLine" id="cb15-7" title="7"><span class="co"># argument, e.g.:</span></a>
+<a class="sourceLine" id="cb15-8" title="8"><span class="kw">plotRatios</span>(results, <span class="dt">group =</span> <span class="st">&quot;A&quot;</span>)</a>
+<a class="sourceLine" id="cb15-9" title="9"><span class="kw">plotRatios</span>(results, <span class="dt">group =</span> <span class="st">&quot;B&quot;</span>, <span class="dt">type =</span> <span class="st">&quot;percentages&quot;</span>)</a>
+<a class="sourceLine" id="cb15-10" title="10"></a>
+<a class="sourceLine" id="cb15-11" title="11"><span class="co"># As usual, you can save the output of plotRatios as an object, and edit</span></a>
+<a class="sourceLine" id="cb15-12" title="12"><span class="co"># it as needed using ggplot commands.</span></a></code></pre></div>
+<p>You can also plot the multiple groups simultaneously for a subset of sections using the ‘sections’ argument!</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" title="1"><span class="co"># For example, if I wanted to know how many animals were in section &quot;River&quot;</span></a>
+<a class="sourceLine" id="cb16-2" title="2"><span class="co"># during the study period, I could run:</span></a>
+<a class="sourceLine" id="cb16-3" title="3"><span class="kw">plotRatios</span>(results, <span class="dt">sections =</span> <span class="st">&quot;River&quot;</span>)</a>
+<a class="sourceLine" id="cb16-4" title="4"></a>
+<a class="sourceLine" id="cb16-5" title="5"><span class="co"># or, for the percentage of tags from each group, run:</span></a>
+<a class="sourceLine" id="cb16-6" title="6"><span class="kw">plotRatios</span>(results, <span class="dt">sections =</span> <span class="st">&quot;River&quot;</span>, <span class="dt">type =</span> <span class="st">&quot;percentages&quot;</span>)</a>
+<a class="sourceLine" id="cb16-7" title="7"></a>
+<a class="sourceLine" id="cb16-8" title="8"><span class="co"># Keep in mind that you cannot use the arguments &#39;group&#39; and &#39;sections&#39; at the same time!</span></a>
+<a class="sourceLine" id="cb16-9" title="9"><span class="co"># But you can see aggregated results for multiple sections, e.g.:</span></a>
+<a class="sourceLine" id="cb16-10" title="10"><span class="kw">plotRatios</span>(results, <span class="dt">sections =</span> <span class="kw">c</span>(<span class="st">&quot;River&quot;</span>, <span class="st">&quot;River-Fjord&quot;</span>, <span class="st">&quot;Fjord&quot;</span>), <span class="dt">type =</span> <span class="st">&quot;percentages&quot;</span>)</a></code></pre></div>
 </div>
 <div id="what-would-you-like-to-see-here" class="section level2">
 <h2>What would you like to see here?</h2>
-<p>actel is a work in progress. Is there any anything you would like to do or see in your data that is missing? Do you think it could be a useful function for actel? <a href="mailto:hdmfla@aqua.dtu.dk">Get in touch!</a></p>
+<p>actel is a work in progress. Is there any anything you would like to do or see in your data that is missing? Have you though of any cool function for actel? <a href="mailto:hdmfla@aqua.dtu.dk">Get in touch!</a></p>
 <p>I hope you enjoy using actel!</p>
 </div>
 

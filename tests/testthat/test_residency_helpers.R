@@ -23,8 +23,8 @@ moves <- groupMovements(detections.list = detections.list[1:2], bio = bio, spati
     speed.method = "last to first", max.interval = 60, tz = "Europe/Copenhagen", dist.mat = dist.mat)
 
 aux <- names(moves)
-moves <- lapply(names(moves), function(fish) {
-    speedReleaseToFirst(fish = fish, bio = bio, movements = moves[[fish]],
+moves <- lapply(names(moves), function(tag) {
+    speedReleaseToFirst(tag = tag, bio = bio, movements = moves[[tag]],
                         dist.mat = dist.mat, speed.method = "last to first")
   })
 names(moves) <- aux
@@ -35,8 +35,8 @@ moves[[1]]$Valid[18] <- FALSE
 attributes(moves[[1]])$p.type <- "Manual"
 
 secmoves <- lapply(seq_along(moves), function(i) {
-  fish <- names(moves)[i]
-  appendTo("debug", paste0("debug: Compiling valid section movements for fish ", fish,"."))
+  tag <- names(moves)[i]
+  appendTo("debug", paste0("debug: Compiling valid section movements for tag ", tag,"."))
   output <- sectionMovements(movements = moves[[i]], spatial = spatial, valid.dist = attributes(dist.mat)$valid)
   return(output)
 })
@@ -124,42 +124,65 @@ test_that("getResidency works as expected", {
 	})
 })
 
-test_that("dailyRatios works as expected", {
-  daily.ratios <<- dailyRatios(res = residency.list)
+test_that("resRatios works as expected", {
+  time.ratios.day <<- resRatios(res = residency.list, tz = "Europe/Copenhagen", timestep = "days")
 
   ### ONLY RUN THIS TO RESET REFERENCE
-  # aux_dailyRatios <- daily.ratios
-  # save(aux_dailyRatios, file = paste0(tests.home, "/aux_dailyRatios.RData"))
+  # aux_resRatios_day <- time.ratios.day
+  # save(aux_resRatios_day, file = paste0(tests.home, "/aux_resRatios_day.RData"))
 
-  load(paste0(tests.home, "/aux_dailyRatios.RData"))
-  expect_equal(daily.ratios, aux_dailyRatios)
+  load(paste0(tests.home, "/aux_resRatios_day.RData"))
+  expect_equal(time.ratios.day, aux_resRatios_day)
+
+  time.ratios.hour <<- resRatios(res = residency.list, tz = "Europe/Copenhagen", timestep = "hours")
+
+  ### ONLY RUN THIS TO RESET REFERENCE
+  # aux_resRatios_hour <- time.ratios.hour
+  # save(aux_resRatios_hour, file = paste0(tests.home, "/aux_resRatios_hour.RData"))
+
+  load(paste0(tests.home, "/aux_resRatios_hour.RData"))
+  expect_equal(time.ratios.hour, aux_resRatios_hour)
 })
 
-test_that("dailyPositions works as expected.", {
-  daily.positions <<- dailyPositions(ratios = daily.ratios)
+test_that("resPositions works as expected.", {
+  res.positions.day <<- resPositions(ratios = time.ratios.day, timestep = "days")
 
-  expect_equal(rownames(daily.positions), c('2018-04-18', '2018-04-19', '2018-04-20',
+  expect_equal(as.character(res.positions.day$Timeslot), c('2018-04-18', '2018-04-19', '2018-04-20',
   	'2018-04-21', '2018-04-22', '2018-04-23', '2018-04-24', '2018-04-25', '2018-04-26',
   	'2018-04-27', '2018-04-28', '2018-04-29', '2018-04-30', '2018-05-01', '2018-05-02',
   	'2018-05-03', '2018-05-04', '2018-05-05', '2018-05-06'))
-  expect_equal(as.vector(daily.positions[, 1]), daily.ratios[[1]]$Most.time)
-  expect_equal(as.vector(daily.positions[, 2]), c(NA, NA, daily.ratios[[2]]$Most.time, NA, NA, NA, NA))
+  expect_equal(as.vector(res.positions.day[, 2]), time.ratios.day[[1]]$Most.time)
+  expect_equal(as.vector(res.positions.day[, 3]), c(NA, NA, time.ratios.day[[2]]$Most.time, NA, NA, NA, NA))
+
+  res.positions.hour <<- resPositions(ratios = time.ratios.hour, timestep = "hours")
+
+  expect_equal(as.vector(res.positions.hour[, 2]), time.ratios.hour[[1]]$Most.time)
+  expect_equal(as.vector(res.positions.hour[, 3]), c(rep(NA, 39), time.ratios.hour[[2]]$Most.time, rep(NA, 76)))
 })
 
 test_that("globalRatios works as expected.", {
-  global.ratios <- globalRatios(positions = daily.positions)	
+  global.ratios.day <- globalRatios(positions = res.positions.day, section.order = c("River", "Fjord", "Sea"))	
 
   ### ONLY RUN THIS TO RESET REFERENCE
-  # aux_globalRatios <- global.ratios
-  # save(aux_globalRatios, file = paste0(tests.home, "/aux_globalRatios.RData"))
+  # aux_globalRatios.day <- global.ratios.day
+  # save(aux_globalRatios.day, file = paste0(tests.home, "/aux_globalRatios_day.RData"))
 
-  load(paste0(tests.home, "/aux_globalRatios.RData"))
-  expect_equal(global.ratios, aux_globalRatios)
+  load(paste0(tests.home, "/aux_globalRatios_day.RData"))
+  expect_equal(global.ratios.day, aux_globalRatios.day)
+
+  global.ratios.hour <- globalRatios(positions = res.positions.hour, section.order = c("River", "Fjord", "Sea"))  
+
+  ### ONLY RUN THIS TO RESET REFERENCE
+  # aux_globalRatios.hour <- global.ratios.hour
+  # save(aux_globalRatios.hour, file = paste0(tests.home, "/aux_globalRatios_hour.RData"))
+
+  load(paste0(tests.home, "/aux_globalRatios_hour.RData"))
+  expect_equal(global.ratios.hour, aux_globalRatios.hour)
 })
 
 test_that("res_efficiency works as expected, and can include intra array estimates", {
   efficiency <<- res_efficiency(arrmoves = moves, bio = bio, spatial = spatial, arrays = arrays, paths = paths, dotmat = dotmat)
-  expect_equal(names(efficiency), c("absolutes", "max.efficiency", "min.efficiency",  "values.per.fish"))
+  expect_equal(names(efficiency), c("absolutes", "max.efficiency", "min.efficiency",  "values.per.tag"))
   ### ONLY RUN THIS TO RESET REFERENCE
   # aux_res_efficiency <- efficiency
   # save(aux_res_efficiency, file = paste0(tests.home, "/aux_res_efficiency.RData"))
@@ -242,16 +265,16 @@ A7 -- A8 -- A7
   xspatial <- spatial
   xspatial$release.sites$Array <- "A0|A1"
 
-  first.array <- firstArrayFailure(fish = "R64K-4451", bio = bio, spatial = xspatial, first.array = "A5", paths = xdot$paths, dotmat = xdot$dotmat)
+  first.array <- firstArrayFailure(tag = "R64K-4451", bio = bio, spatial = xspatial, first.array = "A5", paths = xdot$paths, dotmat = xdot$dotmat)
   expect_equal(first.array,  c(known1 = "A0", known2 = "A4"))
 
-  first.array <- firstArrayFailure(fish = "R64K-4451", bio = bio, spatial = xspatial, first.array = "A6", paths = xdot$paths, dotmat = xdot$dotmat)
+  first.array <- firstArrayFailure(tag = "R64K-4451", bio = bio, spatial = xspatial, first.array = "A6", paths = xdot$paths, dotmat = xdot$dotmat)
   expect_equal(first.array,  c(unsure1 = "A0", unsure2 = "A1", unsure3 = "A4", unsure4 = "A5", unsure5 = "A2", unsure6 = "A3"))
 
-  first.array <- firstArrayFailure(fish = "R64K-4451", bio = bio, spatial = xspatial, first.array = "A7", paths = xdot$paths, dotmat = xdot$dotmat)
+  first.array <- firstArrayFailure(tag = "R64K-4451", bio = bio, spatial = xspatial, first.array = "A7", paths = xdot$paths, dotmat = xdot$dotmat)
   expect_equal(first.array,  c(known = "A6", unsure1 = "A0", unsure2 = "A1", unsure3 = "A4", unsure4 = "A5", unsure5 = "A2", unsure6 = "A3"))
 
-  first.array <- firstArrayFailure(fish = "R64K-4451", bio = bio, spatial = xspatial, first.array = "A9", paths = xdot$paths, dotmat = xdot$dotmat)
+  first.array <- firstArrayFailure(tag = "R64K-4451", bio = bio, spatial = xspatial, first.array = "A9", paths = xdot$paths, dotmat = xdot$dotmat)
   expect_equal(first.array,  c(known = "A6", unsure1 = "A0", unsure2 = "A1", unsure3 = "A4", unsure4 = "A5", unsure5 = "A7", unsure6 = "A8", unsure7 = "A2", unsure8 = "A3"))
 })
 

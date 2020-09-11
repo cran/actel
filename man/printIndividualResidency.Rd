@@ -4,12 +4,10 @@
 \alias{printIndividualResidency}
 \title{print the individual locations per day}
 \usage{
-printIndividualResidency(ratios, dayrange, spatial)
+printIndividualResidency(ratios, global.ratios, spatial, rsp.info)
 }
 \arguments{
 \item{ratios}{the daily ratios}
-
-\item{dayrange}{the overall first and last detection dates}
 
 \item{spatial}{The spatial data list.}
 }
