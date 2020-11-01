@@ -7,21 +7,32 @@
 checkJumpDistance(
   movements,
   tag,
-  release,
+  bio,
+  detections,
+  spatial,
+  arrays,
   dotmat,
+  paths,
   jump.warning,
   jump.error,
-  GUI
+  GUI,
+  save.tables.locally
 )
 }
 \arguments{
-\item{movements}{The movements table}
+\item{movements}{The movements table for a specific tag.}
 
-\item{tag}{The tag being analysed}
+\item{tag}{The tag being analysed.}
 
-\item{release}{The release location of the animal}
+\item{bio}{A table with the tags and biometrics of the studied animals.}
 
-\item{dotmat}{The matrix of distances between arrays}
+\item{detections}{The detections data.frame for a specific tag.}
+
+\item{spatial}{A list of spatial objects in the study area.}
+
+\item{arrays}{a list containing information for each array.}
+
+\item{dotmat}{The matrix of distances between arrays.}
 
 \item{jump.warning}{If a tag crosses a number of arrays equal or greater
 than \code{jump.error} without being detected, a warning is issued. If left
@@ -38,6 +49,10 @@ when the possibility to invalidate events emerges. If "never", a graphical
 interface is never invoked. In this case, if the table to be displayed does
 not fit in R's console, a temporary file will be saved and the user will be
 prompted to open and examine that file. Defaults to "needed".}
+
+\item{save.tables.locally}{Logical: If a table must be temporarily stored into a file
+for user inspection, should it be saved in the current working directory, or
+in R's temporary folder?}
 }
 \value{
 A list of movements with updated 'Valid' columns

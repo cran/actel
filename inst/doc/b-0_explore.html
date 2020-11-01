@@ -12,10 +12,58 @@
 
 <meta name="author" content="Hugo Flávio" />
 
-<meta name="date" content="2020-09-11" />
+<meta name="date" content="2020-11-01" />
 
 <title>2.0) explore()</title>
 
+<style type="text/css">
+a.anchor-section {margin-left: 10px; visibility: hidden; color: inherit;}
+a.anchor-section::before {content: '#';}
+.hasAnchor:hover a.anchor-section {visibility: visible;}
+</style>
+<script>// Anchor sections v1.0 written by Atsushi Yasumoto on Oct 3rd, 2020.
+document.addEventListener('DOMContentLoaded', function() {
+  // Do nothing if AnchorJS is used
+  if (typeof window.anchors === 'object' && anchors.hasOwnProperty('hasAnchorJSLink')) {
+    return;
+  }
+
+  const h = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+  // Do nothing if sections are already anchored
+  if (Array.from(h).some(x => x.classList.contains('hasAnchor'))) {
+    return null;
+  }
+
+  // Use section id when pandoc runs with --section-divs
+  const section_id = function(x) {
+    return ((x.classList.contains('section') || (x.tagName === 'SECTION'))
+            ? x.id : '');
+  };
+
+  // Add anchors
+  h.forEach(function(x) {
+    const id = x.id || section_id(x.parentElement);
+    if (id === '') {
+      return null;
+    }
+    let anchor = document.createElement('a');
+    anchor.href = '#' + id;
+    anchor.classList = ['anchor-section'];
+    x.classList.add('hasAnchor');
+    x.appendChild(anchor);
+  });
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
 
 
 <style type="text/css">code{white-space: pre;}</style>
@@ -301,7 +349,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">2.0) explore()</h1>
 <h4 class="author">Hugo Flávio</h4>
-<h4 class="date">2020-09-11</h4>
+<h4 class="date">2020-11-01</h4>
 
 
 
@@ -352,7 +400,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <a class="sourceLine" id="cb2-3" title="3">  <span class="dt">speed.error =</span> <span class="ot">NULL</span>, <span class="dt">jump.warning =</span> <span class="dv">2</span>, <span class="dt">jump.error =</span> <span class="dv">3</span>, <span class="dt">inactive.warning =</span> <span class="ot">NULL</span>, </a>
 <a class="sourceLine" id="cb2-4" title="4">  <span class="dt">inactive.error =</span> <span class="ot">NULL</span>, <span class="dt">exclude.tags =</span> <span class="ot">NULL</span>, <span class="dt">override =</span> <span class="ot">NULL</span>, <span class="dt">report =</span> <span class="ot">FALSE</span>, </a>
 <a class="sourceLine" id="cb2-5" title="5">  <span class="dt">auto.open =</span> <span class="ot">TRUE</span>, <span class="dt">discard.orphans =</span> <span class="ot">FALSE</span>, <span class="dt">discard.first =</span> <span class="ot">NULL</span>, <span class="dt">discard.orphans =</span> <span class="ot">FALSE</span>, </a>
-<a class="sourceLine" id="cb2-6" title="6">  <span class="dt">save.detections =</span> <span class="ot">FALSE</span>, <span class="dt">GUI =</span> <span class="kw">c</span>(<span class="st">&quot;needed&quot;</span>, <span class="st">&quot;always&quot;</span>, <span class="st">&quot;never&quot;</span>), </a>
+<a class="sourceLine" id="cb2-6" title="6">  <span class="dt">save.detections =</span> <span class="ot">FALSE</span>, <span class="dt">GUI =</span> <span class="kw">c</span>(<span class="st">&quot;needed&quot;</span>, <span class="st">&quot;always&quot;</span>, <span class="st">&quot;never&quot;</span>), <span class="dt">save.tables.locally =</span> <span class="ot">FALSE</span>,</a>
 <a class="sourceLine" id="cb2-7" title="7">  <span class="dt">plot.detections.by =</span> <span class="kw">c</span>(<span class="st">&quot;stations&quot;</span>, <span class="st">&quot;arrays&quot;</span>))</a></code></pre></div>
 <div id="tz" class="section level3">
 <h3>tz</h3>
@@ -658,9 +706,13 @@ Error in checkDupSignals(input = my.list, bio = bio, tag.list = tags$list) :
 <p>actel comes with a graphical interface intended to allow users to deal with very long movement tables that would otherwise overflow R’s output limits. However, this graphical interface requires additional packages installed, so it may not always be an option to rely on it. This is where <code>GUI</code> comes in. Defaulting to ‘needed’, the graphical user interface will only kick in for very long tables. The other two options are ‘always’ and ‘never’, both of which are self explanatory.</p>
 <p>If you cannot run the GUI on your computer and are faced with a very long table, do not worry! actel has a fall-back system, where the table is saved to a temporary file, which you can open in an external program such as Microsoft Excel of LibreOffice Calc. Have a look at the movements table there, let R know what you want to do, close the file and the analysis will continue automatically. This option requires a bit more work, but at least you can still complete your analysis :)</p>
 </div>
+<div id="save.tables.locally" class="section level3">
+<h3>save.tables.locally</h3>
+<p>If actel is unable to access the GUI, long tables will be saved to temporary files (as mentioned above). By default, these tables are saved into R’s temporary directory. However, in some cases (particularly in MacOS), this temporary folder can be hard to find. You can set <code>save.tables.locally = TRUE</code> to have temporary tables saved in your current work directory, rather than the temporary folder. These temporary tables will be deleted once they are no longer required.</p>
+</div>
 <div id="plot.detections.by" class="section level3">
 <h3>plot.detections.by</h3>
-<p>By default, the detections are plotted using the standard station names. However, when you are working with many stations, this can make the detection plots particularly hard to disentangle. As such, you can set <code>plot.detections.by = &#39;arrays&#39;</code> to use the study area’s arrays as the y axis.</p>
+<p>By default, actel decides whether to plot the detections by station or by array, depending on the number of stations and arrays present in the study area. However, you can force a specific Y axis by setting <code>plot.detections.by</code> to either ‘stations’ or ‘arrays’. Note that this will also affect the sensor data plots, as they are coloured consistently with the detection plots.</p>
 </div>
 <div id="all-done" class="section level3">
 <h3>All done!</h3>

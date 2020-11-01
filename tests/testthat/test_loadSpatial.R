@@ -51,12 +51,12 @@ test_that("loadSpatial responds correctly if data is missing or badly formatted"
 	write.csv(spatial, "spatial.csv", row.names = FALSE)
 	expect_warning(
 		expect_message(loadSpatial(),
-			"M: Replacing spaces in array names to prevent function failure.", fixed = TRUE),
+			"M: Replacing spaces with '_' in array names to prevent function failure.", fixed = TRUE),
 		"Long array names detected. To improve graphic rendering, consider keeping array names under six characters.", fixed = TRUE)
 
 	write.csv(spatial, "spatial.csv", row.names = FALSE)
 	expect_message(output <- loadSpatial(),
-		"M: Replacing spaces in array names to prevent function failure.", fixed = TRUE)
+		"M: Replacing spaces with '_' in array names to prevent function failure.", fixed = TRUE)
 	expect_equal(output$Array[1], "River_0_a")
 
 	write.csv(example.spatial[, -match("Type", colnames(example.spatial))], "spatial.csv", row.names = FALSE)
@@ -94,7 +94,13 @@ In the spatial input, the expected first arrays of the release sites should matc
 	spatial$Array[18] <- "Invalid"
 	write.csv(spatial, "spatial.csv", row.names = FALSE)
 	expect_error(loadSpatial(),
-		"The term 'Invalid' is reserved for internal calculations. Do not name any arrays as 'Invalid'.", fixed = TRUE)
+		"The term 'Invalid' is reserved for internal calculations. Do not name any sections or arrays as 'Invalid'.", fixed = TRUE)
+
+	spatial <- example.spatial
+	spatial$Array[18] <- "Total"
+	write.csv(spatial, "spatial.csv", row.names = FALSE)
+	expect_error(loadSpatial(),
+		"The term 'Total' is reserved for internal calculations. Do not name any sections or arrays as 'Total'.", fixed = TRUE)
 
 	spatial <- example.spatial
 	spatial$Section <- as.character(spatial$Section)
@@ -105,10 +111,17 @@ In the spatial input, the expected first arrays of the release sites should matc
 
 	spatial <- example.spatial
 	spatial$Section <- as.character(spatial$Section)
+	spatial$Section[17] <- "Total"
+	write.csv(spatial, "spatial.csv", row.names = FALSE)
+	expect_error(loadSpatial(),
+		"The term 'Total' is reserved for internal calculations. Do not name any sections or arrays as 'Total'.", fixed = TRUE)
+
+	spatial <- example.spatial
+	spatial$Section <- as.character(spatial$Section)
 	spatial$Section[3] <- "Ri ver"
 	write.csv(spatial, "spatial.csv", row.names = FALSE)
 	expect_message(loadSpatial(),
-		"Replacing spaces in section names to prevent function failure.", fixed = TRUE)
+		"Replacing spaces with '_' in section names to prevent function failure.", fixed = TRUE)
 
 	spatial <- example.spatial
 	spatial$Section <- as.character(spatial$Section)
@@ -137,6 +150,16 @@ In the spatial input, the expected first arrays of the release sites should matc
 		"'section.order' was set but input has no 'Section' column. Ignoring argument.", fixed = TRUE)
 })
 
+test_that("loadSpatial converts factors to character", {
+	xspatial <- example.spatial
+	xspatial$Station.name <- as.factor(xspatial$Station.name)
+	xspatial$Type <- as.factor(xspatial$Type)
+	output <- loadSpatial(input = xspatial)
+	expect_equal(typeof(output$Station.name), "character")	
+	expect_equal(typeof(output$Type), "character")	
+	# note: The Section column is converted into a factor within loadSpatial
+})
+
 test_that("loadSpatial output is exactly as expected", {
 	write.csv(example.spatial, "spatial.csv", row.names = FALSE)
 	output <- loadSpatial()
@@ -147,4 +170,11 @@ test_that("loadSpatial output is exactly as expected", {
 	file.remove("spatial.csv")
 })
 
+test_that("loadSpatial stops if arrays were assigned to multiple sections", {
+	xspatial <- example.spatial
+	xspatial$Array[17] <- "A1"
+	expect_error(loadSpatial(xspatial),
+		"Array 'A1' has been assigned to more than one section! Each array can only belong to one section. Please correct the spatial input before continuing.", fixed = TRUE)
+})
 setwd(tests.home)
+rm(list = ls())

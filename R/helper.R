@@ -1,3 +1,53 @@
+#' collapse event indexes into ranges
+#' 
+#' @param x a numerical vector
+#' 
+#' @return a string of isolated events and event ranges
+#' 
+#' @keywords internal
+#' 
+createEventRanges <- function(x) {
+  overlaps <- c(FALSE, x[-length(x)] == x[-1]-1)
+  starts <- which(!overlaps)
+  stops <- c(starts[-1] - 1, length(x))
+  aux <- data.frame(Start = x[starts],
+                    Stop = x[stops])
+  aux$Combine <- aux$Start != aux$Stop
+  aux$Final <- aux$Start
+  aux$Final[aux$Combine] <- paste(aux$Start[aux$Combine], aux$Stop[aux$Combine], sep = ":")
+  return(aux$Final)  
+}
+
+#' Split a dataframe every nth row
+#' 
+#' Idea from here: https://stackoverflow.com/questions/7060272/split-up-a-dataframe-by-number-of-rows
+#' 
+#' @param x the dataframe
+#' @param n the number of rows to keep in each chunk
+#' 
+#' @return A list of equal-sized dataframes
+#' 
+#' @keywords internal
+#' 
+splitN <- function(x, n, row.names = FALSE) {
+  r <- nrow(x)
+  z <- rep(1:ceiling(r / n), each = n)[1:r]
+  output <- split(x, z)
+  
+  if (!row.names)
+    output <- lapply(output, function(x) {
+      rownames(x) <- 1:nrow(x)
+      return(x)
+    })
+
+  aux <- unique(z) * n
+  breaks <- aux[-length(aux)]
+  starts <- c(1, breaks + 1)
+  ends <- c(breaks, r)
+  names(output) <- paste0(starts, ":", ends)
+  return(output)
+}
+
 #' darken colours
 #' 
 #' Copied from https://gist.github.com/Jfortin1/72ef064469d1703c6b30
@@ -11,9 +61,14 @@
 #'  
 darken <- function(color, factor = 1.4){
     col <- grDevices::col2rgb(color)
-    col <- col / factor
+
+    if (factor > 1)
+      col <- col / factor
+    else
+      col <- col + (255 - col) * (1 - factor)
+
     col <- grDevices::rgb(t(col), maxColorValue = 255)
-    col
+    return(col)
 }
 
 #' Match POSIX values
@@ -48,60 +103,6 @@ stopAndReport <- function(...) {
   the.string <- paste0(...)
   appendTo("Report", paste0("Error: ", the.string))
   stop(the.string, call. = FALSE)
-}
-
-#' Wrap frequently used code to handle user input
-#' 
-#' @param question The question to be asked
-#' @param choices The accepted inputs. Leave empty for any input
-#' @param tag the tag code (for comments only)
-#' @param hash A string to attach to the decision in the UD. Ignored if input already has a hash string
-#' 
-#' @keywords internal
-#' 
-userInput <- function(question, choices, tag, hash) {
-  appendTo("debug", "Running userInput.")
-  if (interactive()) { # nocov start
-    try.again <- TRUE
-    
-    while (try.again) {
-      decision <- readline(question)
-      aux <- strsplit(as.character(decision), "[ ]*#")[[1]]
-      output <- tolower(aux[1])
-      
-      if (!missing(choices) && is.na(match(output, choices))) {
-        appendTo("Screen", paste0("Option not recognized, please choose one of: '", paste0(choices, collapse = "', '"), "'."))
-        output <- NULL
-      }
-      
-      if (!is.null(output)) {
-        if (output == "comment") {
-          if (missing(tag)) {
-            warning("A comment was requested but that option is not available here. Please try again.", immediate. = TRUE, call. = FALSE)
-          } else {
-            appendTo("UD", paste("comment # on", tag))
-            appendTo(c("UD", "Comment"), readline(paste0("New comment on tag ", tag, ": ")), tag)
-            appendTo("Screen", "M: Comment successfully stored, returning to the previous interaction.")
-          }
-        } else {
-          try.again <- FALSE
-        }
-      }
-    } 
-    
-    if (length(aux) == 1 & !missing(hash))
-      appendTo("UD", paste(decision, hash))
-    else
-      appendTo("UD", paste(decision))
-
-  } else { # nocov end
-
-    if (any(choices == "n"))
-      output <- "n"
-    if (any(choices == "b"))
-      output <- "b"
-  }
-  return(output)
 }
 
 #' Find original station name
@@ -207,30 +208,6 @@ dataToList <- function(source){
   e <- new.env()
   load(source, envir = e)
   return(as.list(e))
-}
-
-#' @title Remove Code Spaces from transmitter names
-#'
-#' @param input A vector of transmitter names
-#'
-#' @return A vector of transmitter signals
-#'
-#' @name stripCodeSpaces-deprecated
-#' @usage stripCodeSpaces(input)
-#' @seealso \code{\link{actel-deprecated}}
-#' @keywords internal
-NULL
-
-#' @rdname stripCodeSpaces-deprecated
-#'
-#' @section \code{stripCodeSpaces}:
-#' For \code{stripCodeSpaces}, use \code{\link{extractSignals}}.
-#'
-#' @export
-#'
-stripCodeSpaces <- function(input) {
-  .Deprecated("extractSignals")
-  extractSignals(input)
 }
 
 #' Extract signals from transmitter names
@@ -565,26 +542,71 @@ deleteHelpers <- function() {
 #'
 emergencyBreak <- function(the.function.call) { # nocov start
   appendTo("Report", "\nA fatal exception occurred, stopping the process!\nFound a bug? Report it here: https://github.com/hugomflavio/actel/issues\n\n-------------------")
-  logname <- paste(gsub(":", ".", sub(" ", ".", as.character(Sys.time()))), "actel.log-ERROR.txt", sep = ".")
+  if (file.exists(paste0(tempdir(), "/temp_comments.txt")))
+    appendTo("Report", paste0("User comments:\n-------------------\n", gsub("\t", ": ", gsub("\r", "", readr::read_file(paste0(tempdir(), "/temp_comments.txt")))), "-------------------"))
 
-  if (file.exists(paste(tempdir(), "temp_comments.txt", sep = "/")))
-    appendTo("Report", paste0("User comments:\n-------------------\n", gsub("\t", ": ", gsub("\r", "", readr::read_file(paste(tempdir(), "temp_comments.txt", sep = "/")))), "-------------------")) # nocov
-
-  if (file.exists(paste(tempdir(), "temp_UD.txt", sep = "/")))
-    appendTo("Report", paste0("User interventions:\n-------------------\n", gsub("\r", "", readr::read_file(paste(tempdir(), "temp_UD.txt", sep = "/"))), "-------------------")) # nocov
+  if (file.exists(paste0(tempdir(), "/temp_UD.txt")))
+    appendTo("Report", paste0("User interventions:\n-------------------\n", gsub("\r", "", readr::read_file(paste0(tempdir(), "/temp_UD.txt"))), "-------------------"))
 
   appendTo("Report", paste0("Function call:\n-------------------\n", the.function.call, "\n-------------------"))
 
-  message("")
-  decision <- userInput(paste0("\nThe analysis errored. Save job log (including comments and decisions) to ", logname, "?(y/n) "), choices = c("y", "n"))
+  message("\nM: The analysis errored. You can recover latest the job log (including your comments and decisions) by running recoverLog().")
   
-  if (decision == "y")
-    file.copy(paste(tempdir(), "temp_log.txt", sep = "/"), logname)
-  else
-    file.rename(paste(tempdir(), "temp_log.txt", sep = "/"), paste(tempdir(), logname, sep = "/"))
-
-  deleteHelpers()
+  if (getOption("actel.debug", default = FALSE)) {
+    file.copy(paste0(tempdir(), "/temp_log.txt"), paste0(tempdir(), "/latest_actel_error_log.txt"))
+  } else {
+    file.rename(paste0(tempdir(), "/temp_log.txt"), paste0(tempdir(), "/latest_actel_error_log.txt"))
+    deleteHelpers()
+  }
 } # nocov end
+
+#' Recover latest actel crash log
+#' 
+#' @param file Name of the file to which the log should be saved.
+#' @param overwrite Logical: If 'file' already exists, should its content be overwritten?
+#' 
+#' @examples
+#' \dontshow{
+#' sink(paste0(tempdir(), "/latest_actel_error_log.txt"))
+#' cat(
+#' "This is an example file
+#' -
+#' -
+#' -
+#' Timestamp: ", Sys.Date(), "
+#' Function: example()")
+#' sink()
+#' }
+#' 
+#' recoverLog(file = paste0(tempdir(), "/new_log.txt"))
+#' 
+#' \dontshow{
+#' file.remove(paste0(tempdir(), "/latest_actel_error_log.txt"))
+#' file.remove(paste0(tempdir(), "/new_log.txt"))
+#' }
+#' 
+#' @return No return value, called for side effects.
+#' 
+#' @export
+#' 
+recoverLog <- function(file, overwrite = FALSE) {
+  if (!file.exists(paste0(tempdir(), "/latest_actel_error_log.txt")))
+    stop("No crash logs found.", call. = FALSE)
+
+  if (missing(file))
+    stop("Please state the name of the output file", call. = FALSE)
+
+  if (!grepl(".txt$", file))
+    file <- paste0(file, ".txt")
+
+  if (file.exists(file) & !overwrite)
+    stop("File '", file, "' already exists and overwrite = FALSE", call. = FALSE)
+
+  file.copy(paste0(tempdir(), "/latest_actel_error_log.txt"), file, overwrite = overwrite)
+
+  x <- readLines(file)
+  message("M: Job log for ", sub("Function: ", "", x[6]), " analysis run on ", sub("Timestamp: ", "", x[5]), " recovered to ", file)
+}
 
 #' Convert a data frame with timestamps into a list of circular objects
 #'
@@ -1084,12 +1106,13 @@ distancesMatrix <- function(t.layer, starters = NULL, targets = starters,
   if (is.na(match(coord.y, colnames(targets))))
     stop(paste0("Could not find a column '", coord.y, "' in 'targets'."), call. = FALSE)
 
-  colnames(starters)[colnames(starters) == coord.x] <- "longitude"
-  colnames(starters)[colnames(starters) == coord.y] <- "latitude"
-  colnames(targets)[colnames(targets) == coord.x] <- "longitude"
-  colnames(targets)[colnames(targets) == coord.y] <- "latitude"
+    starters <- starters[, c(id.col, coord.x, coord.y)]
+    colnames(starters) <- c(id.col, "longitude", "latitude")
 
-  if (!missing(id.col)) {
+    targets <- targets[, c(id.col, coord.x, coord.y)]
+    colnames(targets) <- c(id.col, "longitude", "latitude")
+    
+  if (!is.null(id.col)) {
     if (!is.na(match(id.col, colnames(starters)))) {
       outputRows <- starters[, id.col]
       if (any(duplicated(outputRows))) {
@@ -1118,12 +1141,15 @@ distancesMatrix <- function(t.layer, starters = NULL, targets = starters,
     row.rename <- FALSE
     col.rename <- FALSE
   }
+
   #### Process the "from" coordinates (this would be the starters ".csv" file)
   sp::coordinates(starters) <- ~ longitude + latitude # converts the file to a spatialPoints object
   raster::crs(starters) <- raster::crs(t.layer) # sets the crs
+  
   #### Process the "to" coordinates (this would be the targets ".csv" file)
   sp::coordinates(targets) <- ~ longitude + latitude # converts the file to a spatialPoints object
   raster::crs(targets) <- raster::crs(t.layer)
+  
   #### Calculate a matrix of distances to each object
   dist.mat <- data.frame(gdistance::costDistance(t.layer, starters, targets))
   if (any(dist.mat == Inf)) {
@@ -1133,11 +1159,14 @@ in the shape file, consider applying a 'buffer' when calculating the transition 
 will artificially add water space around the shape file.", call. = FALSE)
     dist.mat[dist.mat == Inf] <- NA
   }
+  
   if (row.rename)
     rownames(dist.mat) <- outputRows
+  
   if (col.rename)
     colnames(dist.mat) <- outputCols
-  if (interactive () & actel) { # nocov start
+  
+  if (interactive() & actel) { # nocov start
     decision <- userInput("Would you like to save an actel-compatible distances matrix as 'distances.csv' in the current work directory?(y/n) ",
                           choices = c("y", "n"))
     if (decision == "y") {

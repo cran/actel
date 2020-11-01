@@ -4,14 +4,29 @@
 \alias{checkImpassables}
 \title{Find out if a tag moved in an impossible direction}
 \usage{
-checkImpassables(movements, tag, dotmat, GUI)
+checkImpassables(
+  movements,
+  tag,
+  bio,
+  spatial,
+  detections,
+  dotmat,
+  GUI,
+  save.tables.locally
+)
 }
 \arguments{
-\item{movements}{The movements table}
+\item{movements}{The movements table for a specific tag.}
 
-\item{tag}{The tag being analysed}
+\item{tag}{The tag being analysed.}
 
-\item{dotmat}{The matrix of distances between arrays}
+\item{bio}{A table with the tags and biometrics of the studied animals.}
+
+\item{spatial}{A list of spatial objects in the study area.}
+
+\item{detections}{The detections data.frame for a specific tag.}
+
+\item{dotmat}{The matrix of distances between arrays.}
 
 \item{GUI}{One of "needed", "always" or "never". If "needed", a new window is
 opened to inspect the movements only if the movements table is too big to be

@@ -12,10 +12,58 @@
 
 <meta name="author" content="Hugo Flávio" />
 
-<meta name="date" content="2020-09-11" />
+<meta name="date" content="2020-11-01" />
 
 <title>1.3) The preload() function</title>
 
+<style type="text/css">
+a.anchor-section {margin-left: 10px; visibility: hidden; color: inherit;}
+a.anchor-section::before {content: '#';}
+.hasAnchor:hover a.anchor-section {visibility: visible;}
+</style>
+<script>// Anchor sections v1.0 written by Atsushi Yasumoto on Oct 3rd, 2020.
+document.addEventListener('DOMContentLoaded', function() {
+  // Do nothing if AnchorJS is used
+  if (typeof window.anchors === 'object' && anchors.hasOwnProperty('hasAnchorJSLink')) {
+    return;
+  }
+
+  const h = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+  // Do nothing if sections are already anchored
+  if (Array.from(h).some(x => x.classList.contains('hasAnchor'))) {
+    return null;
+  }
+
+  // Use section id when pandoc runs with --section-divs
+  const section_id = function(x) {
+    return ((x.classList.contains('section') || (x.tagName === 'SECTION'))
+            ? x.id : '');
+  };
+
+  // Add anchors
+  h.forEach(function(x) {
+    const id = x.id || section_id(x.parentElement);
+    if (id === '') {
+      return null;
+    }
+    let anchor = document.createElement('a');
+    anchor.href = '#' + id;
+    anchor.classList = ['anchor-section'];
+    x.classList.add('hasAnchor');
+    x.appendChild(anchor);
+  });
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
 
 
 <style type="text/css">code{white-space: pre;}</style>
@@ -301,7 +349,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">1.3) The preload() function</h1>
 <h4 class="author">Hugo Flávio</h4>
-<h4 class="date">2020-09-11</h4>
+<h4 class="date">2020-11-01</h4>
 
 
 
@@ -368,15 +416,12 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </div>
 <div id="migrationresidency-compatible-datapacks" class="section level2">
 <h2>migration/residency-compatible datapacks</h2>
-<p>If your final goal is to run a <code>migration()</code> or <code>residency()</code> analysis, remember to have a ‘Section’ column in your spatial input.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1">x &lt;-<span class="st"> </span><span class="kw">preload</span>(<span class="dt">biometrics =</span> biometrics, <span class="dt">spatial =</span> spatial, <span class="dt">deployments =</span> deployments, </a>
-<a class="sourceLine" id="cb4-2" title="2">    <span class="dt">detections =</span> detections, <span class="dt">distances =</span> distances, <span class="dt">dot =</span> dot, <span class="dt">tz =</span> <span class="st">&quot;Europe/Copenhagen&quot;</span>)</a></code></pre></div>
-<p>You can then run residency and migration simply sourcing the datapack!</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1">results &lt;-<span class="st"> </span><span class="kw">migration</span>(<span class="dt">datapack =</span> x)</a>
-<a class="sourceLine" id="cb5-2" title="2"></a>
-<a class="sourceLine" id="cb5-3" title="3"><span class="co"># or</span></a>
-<a class="sourceLine" id="cb5-4" title="4"></a>
-<a class="sourceLine" id="cb5-5" title="5">results &lt;-<span class="st"> </span><span class="kw">residency</span>(<span class="dt">datapack =</span> x)</a></code></pre></div>
+<p>If your final goal is to run a <code>migration()</code> or <code>residency()</code> analysis, remember to have a ‘Section’ column in your spatial input. Apart from that, the process is exactly the same! Load your data using preload, and then source the loaded datapack into the analysis functions:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1">results &lt;-<span class="st"> </span><span class="kw">migration</span>(<span class="dt">datapack =</span> x)</a>
+<a class="sourceLine" id="cb4-2" title="2"></a>
+<a class="sourceLine" id="cb4-3" title="3"><span class="co"># or</span></a>
+<a class="sourceLine" id="cb4-4" title="4"></a>
+<a class="sourceLine" id="cb4-5" title="5">results &lt;-<span class="st"> </span><span class="kw">residency</span>(<span class="dt">datapack =</span> x)</a></code></pre></div>
 </div>
 <div id="remaining-arguments" class="section level2">
 <h2>Remaining arguments</h2>

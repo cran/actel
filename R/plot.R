@@ -1,3 +1,172 @@
+#' Plot array live times
+#' 
+#' @param input An actel results object, or a preload object
+#' @param arrays Optional: A subset of arrays to be plotted
+#' @param show.stations Logical: Should the live times of each station be shown under the array bars?
+#' @param array.size The size of the array bars (defaults to 2)
+#' @param station.size The size of the station bars (defaults to 1)
+#' @param show.caps Logical: Should cap lines be shown at the end of each live period?
+#' @param cap.prop The relative size of the caps, as compared to the respective bars (defaults to 2).
+#' @param title An optional title for the plot.
+#' @param xlab,ylab Optional axis names for the plot.
+#' @param col An optional colour scheme for the array bars. If left empty, default colours will be added.
+#'  Note: Station bars are 40% lighter than the array bars.
+#' 
+#' @return A ggplot object.
+#'
+#' @examples
+#' # Using the example results that come with actel
+#' plotLive(example.results)
+#'
+#' # Because plotSensors returns a ggplot object, you can store
+#' # it and edit it manually, e.g.:
+#' library(ggplot2)
+#' p <- plotLive(example.results)
+#' p <- p + xlab("changed the x axis label a posteriori")
+#' p
+#'
+#' # You can also save the plot using ggsave!
+#'
+#' @export
+#'
+#' 
+plotLive <- function(input, arrays, show.stations = FALSE, array.size = 2, station.size = 1, 
+                     show.caps = TRUE, cap.prop = 2, title = "", xlab = "", ylab = "", col) {
+  value <- NULL
+  Y <- NULL
+  line <- NULL
+  Section <- NULL
+
+  cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink")
+
+  if (!inherits(input, "list"))
+    stop("Could not recognise the input as an actel results or preload object.", call. = FALSE)
+
+  if (is.null(input$spatial) | is.null(input$arrays) | is.null(input$deployments))
+    stop("Could not recognise the input as an actel results or preload object.", call. = FALSE)
+
+  if (!missing(arrays) && any(is.na(match(arrays, unlist(input$spatial$array.order)))))
+    stop("'arrays' was set but not all contents match array names in the study area.", call. = FALSE)
+
+  spatial <- input$spatial
+  deployments <- input$deployments
+  study.arrays <- input$arrays
+
+  if (!is.data.frame(deployments))
+    xdep <- do.call(rbind, deployments)
+  else
+    xdep <- deployments
+
+  if (any(xdep$Array == "Unknown")) {
+    warning("This dataset contains unknown stations. These stations will not be plotted.", immediate. = TRUE, call. = FALSE)
+    xdep <- xdep[xdep$Array != "Unknown", ]
+  }
+  
+  # prepare input
+  if (show.stations) {
+    xdep$line <- 1:nrow(xdep)
+    pd <- reshape2::melt(xdep[, c("Array", "line", "Standard.name", "Start", "Stop")], id.vars = c("Array", "line", "Standard.name"))
+    colnames(pd)[colnames(pd) == "Standard.name"] <- "Y"
+
+    aux <- lapply(study.arrays, function(x) x$live)
+    aux <- data.table::rbindlist(aux, idcol = "Array")
+    aux$Y <- aux$Array
+    aux$line <- (nrow(xdep) + 1):(nrow(xdep) + nrow(aux))
+    to.add <- reshape2::melt(aux, id.vars = c("Array", "line", "Y"))
+
+    pd <- rbind(pd, to.add)
+  } else {
+    aux <- lapply(study.arrays, function(x) x$live)
+    aux <- data.table::rbindlist(aux, idcol = "Array")
+    aux$Y <- aux$Array
+    aux$line <- 1:nrow(aux)
+    pd <- reshape2::melt(aux, id.vars = c("Array", "line", "Y"))
+  }
+
+  # subset if needed
+  if (!missing(arrays)) {
+    pd <- pd[pd$Array %in% arrays, ]
+  }
+
+  # find y.order
+  if (show.stations) {
+    x <- split(spatial$stations$Standard.name, spatial$stations$Array)
+    x <- x[unlist(spatial$array.order)]
+
+    y.order <- unlist(lapply(names(x), function(i) {
+      c(i, sort(x[[i]]))
+    }))
+
+    y.order <- rev(y.order)
+  } else {
+    y.order <- rev(unlist(spatial$array.order))
+  }
+
+  pd$Y <- factor(pd$Y, levels = y.order)
+  pd$Y <- droplevels(pd$Y)
+
+  # assign sections
+  link <- lapply(1:length(spatial$array.order), function(i) {
+    output <- rep(NA_real_, nrow(pd))
+    output[pd$Array %in% spatial$array.order[[i]]] <- i
+    return(output)
+  })
+  link <- combine(link)
+  pd$Section <- factor(names(spatial$array.order)[link], levels = names(spatial$array.order))
+
+  # choose colours
+  if (missing(col)) {
+    if (length(names(spatial$array.order)) <= 7) {
+      col <- as.vector(cbPalette)[1:length(names(spatial$array.order))]
+    } else {
+      col <- gg_colour_hue(length(names(spatial$array.order)))
+    }
+  } else {
+    if (length(col) < length(names(spatial$array.order))) {
+      warning("Not enough colours supplied in 'col' (", length(col)," supplied and ", length(names(spatial$array.order)), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
+      col <- rep(col, length.out = length(names(spatial$array.order)))
+    }
+  }
+  st.col <- darken(col, 0.6)
+
+  # assing colours
+  link <- match(pd$Section, names(spatial$array.order))
+  pd$col <- sapply(1:nrow(pd), function(i) {
+    if (pd$Array[i] == pd$Y[i])
+      col[link[i]]
+    else
+      st.col[link[i]]
+  })
+
+  # assign sizes
+  pd$Size <- ifelse(pd$Array == pd$Y, array.size, station.size)
+
+  # sort pd
+  pd <- pd[order(pd$Y), ]
+
+  p <- ggplot2::ggplot(data = pd, ggplot2::aes(x = value, y = Y, group = line))
+  # place holder just to set the Y in order
+  p <- p + ggplot2::geom_path()
+  
+  a <- pd[pd$Array == pd$Y, ]
+  p <- p + ggplot2::geom_path(data = a, ggplot2::aes(col = Section), size = a$Size)
+  
+  if (show.stations) {
+    s <- pd[pd$Array != pd$Y, ]
+    p <- p + ggplot2::geom_path(data = s, col = s$col, size = s$Size)
+  }
+
+  if (show.caps)
+    p <- p + ggplot2::geom_point(shape = "|", size = pd$Size*cap.prop, colour = pd$col)
+
+  p <- p + ggplot2::theme_bw()
+  p <- p + ggplot2::labs(title = title, x = xlab, y = ylab)
+  p <- p + ggplot2::scale_color_manual(values = col, drop = FALSE)
+  p <- p + ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = array.size)))
+  p
+}
+
 #' Plot sensor data for a single tag
 #'
 #' The output of plotSensors is a ggplot object, which means you can then use it in combination
@@ -57,6 +226,9 @@ plotSensors <- function(input, tag, sensor, title = tag, xlab, ylab, pcol, psize
   if (is.na(match(tag, names(input$valid.detections))))
     stop("Could not find tag '", tag, "' in the input.", call. = FALSE)
 
+  if (length(lcol) > 1)
+    stop("Please provide only one value for 'lcol'.", call. = FALSE)
+  
   detections <- input$valid.detections[[tag]]
   spatial <- input$spatial
 
@@ -84,7 +256,7 @@ plotSensors <- function(input, tag, sensor, title = tag, xlab, ylab, pcol, psize
 
   # renaming arrays if relevant
   if (!missing(array.alias)) {
-    if (colour.by == "section") {
+    if (colour.by == "array") {
       link <- match(names(array.alias), levels(detections$Array))
       if (any(is.na(link)))
         warning("Could not find ", ifelse(sum(is.na(link) == 1), "array ", "arrays "), names(array.alias)[is.na(link)], " in the study's arrays.", call. = FALSE, immediate. = TRUE)
@@ -313,7 +485,6 @@ plotArray <- function(input, arrays, title, xlab, ylab, lwd = 1, col = "#56B4E9"
 #' @export
 #'
 plotMoves <- function(input, tags, title, xlab, ylab, col, array.alias, show.release = TRUE) {
-  message("M: The old plotMoves function has been renamed to plotDetections as of version 1.1.1. Please ensure you are calling the right function!")
   movements <- NULL
   tag <- NULL
   event <- NULL
@@ -466,7 +637,7 @@ plotMoves <- function(input, tags, title, xlab, ylab, col, array.alias, show.rel
 #'
 #' @export
 #'
-plotDetections <- function(input, tag, type = c("stations", "arrays"), title, xlab, ylab, col, array.alias, frame.warning = TRUE) {
+plotDetections <- function(input, tag, type = c("auto", "stations", "arrays"), title, xlab, ylab, col, array.alias, frame.warning = TRUE) {
   # NOTE: The NULL variables below are actually column names used by ggplot.
   # This definition is just to prevent the package check from issuing a note due unknown variables.
   Timestamp <- NULL
@@ -513,6 +684,13 @@ plotDetections <- function(input, tag, type = c("stations", "arrays"), title, xl
 
   # Y axis order
   spatial <- input$spatial
+  if (type == "auto") {
+    if (nrow(spatial$stations) > 40 | length(unique(spatial$stations$Array)) > 12)
+      type <- "arrays"
+    else
+      type <- "stations"
+  }
+
   if (type == "stations") {
     link <- match(spatial$stations$Array, c(unlist(spatial$array.order), "Unknown"))
     names(link) <- 1:length(link)
@@ -686,7 +864,13 @@ plotDetections <- function(input, tag, type = c("stations", "arrays"), title, xl
   p <- p + ggplot2::scale_y_discrete(drop = FALSE)
   # Caption and title
   p <- p + ggplot2::guides(colour = ggplot2::guide_legend(reverse = TRUE))
-  p <- p + ggplot2::labs(title = title, x = ifelse(missing(xlab), paste("tz:", tz), xlab), y = ifelse(missing(ylab), "Station Standard Name", ylab))
+  if (missing(ylab)) {
+    if (type == "stations")
+      ylab <- "Station Standard Name"
+    else
+      ylab <- "Array"
+  }
+  p <- p + ggplot2::labs(title = title, x = ifelse(missing(xlab), paste("tz:", tz), xlab), y = ylab)
 
   return(p)
 }
@@ -751,6 +935,12 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
   if (!inherits(times, "list"))
     stop("'times' must be a list.", call. = FALSE)
 
+  if (any(link <- !sapply(times, function(i) "circular" %in% class(i))))
+    stop(ifelse(sum(link) > 1, "Element(s) ", "Element "),
+         paste(which(link), collapse = " "), " in 'times' ",
+         ifelse(sum(link) > 1, "are not ", "is not a "), "circular ",
+         ifelse(sum(link) > 1, "objects.", "object."), call. = FALSE)
+
   if (!is.null(night) && length(night) != 2)
     stop("'night' must have two values.", call. = FALSE)
 
@@ -804,6 +994,11 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
         width <- 5
     }
 
+    if (grepl("\\\\|/|:|\\*|\\?|\\\"|<|>|\\|", file)) {
+      warning("Illegal characters found in the file name (\\/:*?\"<>|). Replacing these with '_' to prevent function failure.", immediate. = TRUE, call. = FALSE)
+      file <- gsub("\\\\|/|:|\\*|\\?|\\\"|<|>|\\|", "_", file)
+    }
+
     if (grepl(".png$", file) | grepl(".tiff$", file)) {
       if (missing(height))
         height <- 500
@@ -831,6 +1026,7 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
     if (unk.ext) {
       stop("Could not recognise 'file' extension (recognised extensions: .svg, .pdf, .png, .tiff).", call. = FALSE)
     }
+    on.exit(grDevices::dev.off())
   }
 
   if (legend.pos == "auto") {
@@ -944,10 +1140,8 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
     legend = paste(names(times), " (", unlist(lapply(times, function(x) sum(!is.na(x)))), ")", sep =""),
     fill = params$col, bty = "n", x.intersp = 0.3, cex = 0.8, ncol = ncol)
 
-  if(!missing(file)) {
-    grDevices::dev.off()
+  if(!missing(file))
     message("M: Plot saved to ", file)
-  }
 }
 
 #' Calculate beta estimations for efficiency

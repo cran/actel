@@ -12,10 +12,58 @@
 
 <meta name="author" content="Hugo Flávio" />
 
-<meta name="date" content="2020-09-11" />
+<meta name="date" content="2020-11-01" />
 
 <title>2.1) Processes behind explore()</title>
 
+<style type="text/css">
+a.anchor-section {margin-left: 10px; visibility: hidden; color: inherit;}
+a.anchor-section::before {content: '#';}
+.hasAnchor:hover a.anchor-section {visibility: visible;}
+</style>
+<script>// Anchor sections v1.0 written by Atsushi Yasumoto on Oct 3rd, 2020.
+document.addEventListener('DOMContentLoaded', function() {
+  // Do nothing if AnchorJS is used
+  if (typeof window.anchors === 'object' && anchors.hasOwnProperty('hasAnchorJSLink')) {
+    return;
+  }
+
+  const h = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+  // Do nothing if sections are already anchored
+  if (Array.from(h).some(x => x.classList.contains('hasAnchor'))) {
+    return null;
+  }
+
+  // Use section id when pandoc runs with --section-divs
+  const section_id = function(x) {
+    return ((x.classList.contains('section') || (x.tagName === 'SECTION'))
+            ? x.id : '');
+  };
+
+  // Add anchors
+  h.forEach(function(x) {
+    const id = x.id || section_id(x.parentElement);
+    if (id === '') {
+      return null;
+    }
+    let anchor = document.createElement('a');
+    anchor.href = '#' + id;
+    anchor.classList = ['anchor-section'];
+    x.classList.add('hasAnchor');
+    x.appendChild(anchor);
+  });
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
 
 
 
@@ -215,7 +263,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">2.1) Processes behind explore()</h1>
 <h4 class="author">Hugo Flávio</h4>
-<h4 class="date">2020-09-11</h4>
+<h4 class="date">2020-11-01</h4>
 
 
 
@@ -321,7 +369,7 @@ Events to be rendered invalid: </code></pre>
 <pre><code>Warning: Tag R64K-1234 jumped through 3 arrays in events 1 -&gt; 2 (A -&gt; E).
 M: Opening movement table of tag R64K-2791 for inspection:
 [...]
-Would you like to render any movement event invalid?(y/N/comment)</code></pre>
+Would you like to render any movement event invalid, or expand an event?(y/n/comment)</code></pre>
 <p>From here, you can inspect the movement table and find out if some events should be removed from the analysis.</p>
 </div>
 <div id="average-speed" class="section level3">
@@ -335,7 +383,7 @@ M: Opening valid movements table of tag R64K-1234 for inspection:
 
 [...]
 
-Would you like to render any movement event invalid?(y/N/comment) </code></pre>
+Would you like to render any movement event invalid, or expand an event?(y/n/comment) </code></pre>
 <p>From here you can then decide whether or not some movement events should be excluded.</p>
 </div>
 <div id="inactiveness" class="section level3">
@@ -433,7 +481,7 @@ Would you like to render any movement event invalid?(y/N/comment) </code></pre>
 
 [...]
 
-Would you like to render any movement event invalid?(y/N/comment) </code></pre>
+Would you like to render any movement event invalid, or expand an event?(y/n/comment) </code></pre>
 <p>From here you could then decide if some events should be removed.</p>
 </div>
 <div id="what-if-the-tag-reached-the-array-moved-about-a-bit-and-only-then-stopped-moving" class="section level4">

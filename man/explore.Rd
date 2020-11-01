@@ -26,8 +26,9 @@ explore(
   discard.first = NULL,
   save.detections = FALSE,
   GUI = c("needed", "always", "never"),
+  save.tables.locally = FALSE,
   print.releases = TRUE,
-  plot.detections.by = c("stations", "arrays")
+  plot.detections.by = c("auto", "stations", "arrays")
 )
 }
 \arguments{
@@ -122,11 +123,16 @@ interface is never invoked. In this case, if the table to be displayed does
 not fit in R's console, a temporary file will be saved and the user will be
 prompted to open that file and examine it. Defaults to "needed".}
 
+\item{save.tables.locally}{Logical: If a table must be temporarily stored into a file
+for user inspection, should it be saved in the current working directory, or
+in R's temporary folder?}
+
 \item{print.releases}{Logical: Should the release sites be printed in the
 study area diagrams?}
 
 \item{plot.detections.by}{The type of y axis desired for the individual
-detection plots. One of "stations" (default) or "arrays".}
+detection plots. While the argument defaults to "auto", it can be hard-set
+to one of "stations" or "arrays".}
 }
 \value{
 A list containing:

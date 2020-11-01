@@ -3,7 +3,7 @@ Jump to [**installation instructions**](#installing-actel)
 # actel<img src="vignettes/actel_logo.png" align="right" width="120" />
 
 [![R-CMD-check](https://github.com/hugomflavio/actel/workflows/R-CMD-check--as-cran/badge.svg)](https://github.com/hugomflavio/actel/actions)
-[![Travis Build Status](https://travis-ci.com/hugomflavio/actel.svg?branch=master)](https://travis-ci.org/hugomflavio/actel)
+[![Travis Build Status](https://travis-ci.org/hugomflavio/actel.svg?branch=master)](https://travis-ci.org/hugomflavio/actel)
 [![CRAN\_Status\_Badge](https://www.r-pkg.org/badges/version/actel)](https://cran.r-project.org/package=actel)
 [![CRAN RStudio mirror downloads](https://cranlogs.r-pkg.org/badges/actel)](https://cran.r-project.org/package=actel)
 
@@ -43,7 +43,7 @@ Here are some examples:
 
 |Array  | Detections|First station |Last station |First time          |Last time           |Time travelling |Time on array |
 |:------|----------:|:-------------|:------------|:-------------------|:-------------------|---------------:|-------------:|
-|River1 |         14|St.1          |St.2         |2019-05-15 10:30:00 |2019-05-15 13:00:00 |              NA|       3:30:00|
+|River1 |         14|St.1          |St.2         |2019-05-15 10:30:00 |2019-05-15 13:00:00 |        25:20:14|       2:30:00|
 |River2 |          3|St.4          |St.4         |2019-05-15 13:50:00 |2019-05-15 14:40:00 |         0:50:00|       0:50:00|
 |River3 |          8|St.5          |St.6         |2019-05-15 16:00:00 |2019-05-15 16:20:00 |         1:20:00|       0:20:00|
 |Fjord2 |         21|St.10         |St.11        |2019-05-16 15:10:00 |2019-05-16 18:00:00 |        22:50:00|       2:50:00|
@@ -71,7 +71,7 @@ Here are some examples:
 
 ## Installing actel 
 
-**CRAN version: 1.1.1**
+**CRAN version: 1.2.0**
 
 actel is available on CRAN. To install the latest stable version, simply run:
 
@@ -93,7 +93,6 @@ After installing, you should read the package vignettes (i.e. the manual), which
 
 **Note:**
 
-1. If the vignettes are not showing up with the command above, you can download them directly here: [**actel_vignettes.zip**](https://github.com/hugomflavio/actel/raw/master/actel_vignettes.zip)
 1. If you are getting "pandoc document conversion" errors during the package installation, try installing the [newest version of pandoc](https://pandoc.org/installing.html), restarting R and trying again.
 
 

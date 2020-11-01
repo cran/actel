@@ -4,16 +4,29 @@
 \alias{checkUpstream}
 \title{Check for movements upstream of the release site.}
 \usage{
-checkUpstream(movements, tag, release, arrays, GUI)
+checkUpstream(
+  movements,
+  tag,
+  bio,
+  detections,
+  arrays,
+  spatial,
+  GUI,
+  save.tables.locally
+)
 }
 \arguments{
-\item{movements}{The movements table}
+\item{movements}{The movements table for a specific tag.}
 
-\item{tag}{The tag being analysed}
+\item{tag}{The tag being analysed.}
 
-\item{release}{The release location of the animal}
+\item{bio}{A table with the tags and biometrics of the studied animals.}
 
-\item{arrays}{a list containing information for each array}
+\item{detections}{The detections data.frame for a specific tag.}
+
+\item{arrays}{a list containing information for each array.}
+
+\item{spatial}{A list of spatial objects in the study area.}
 
 \item{GUI}{One of "needed", "always" or "never". If "needed", a new window is
 opened to inspect the movements only if the movements table is too big to be

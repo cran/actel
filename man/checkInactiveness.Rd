@@ -7,20 +7,20 @@
 checkInactiveness(
   movements,
   tag,
-  detections.list,
+  detections,
   inactive.warning,
   inactive.error,
   dist.mat,
-  GUI
+  GUI,
+  save.tables.locally
 )
 }
 \arguments{
-\item{movements}{The movements table}
+\item{movements}{The movements table for a specific tag.}
 
-\item{tag}{The tag being analysed}
+\item{tag}{The tag being analysed.}
 
-\item{detections.list}{A list of the detections split by each target tag,
-created by \code{\link{splitDetections}}.}
+\item{detections}{The detections data.frame for a specific tag.}
 
 \item{inactive.warning}{If a tag spends a number of days equal or greater
 than \code{inactive.error} in a given array at the tail of the respective
@@ -32,6 +32,8 @@ issued.}
 detections, user intervention is suggested. If left NULL (default), user
 intervention is never suggested.}
 
+\item{dist.mat}{A distances matrix.}
+
 \item{GUI}{One of "needed", "always" or "never". If "needed", a new window is
 opened to inspect the movements only if the movements table is too big to be
 displayed in R's console. If "always", a graphical interface is always created
@@ -39,6 +41,10 @@ when the possibility to invalidate events emerges. If "never", a graphical
 interface is never invoked. In this case, if the table to be displayed does
 not fit in R's console, a temporary file will be saved and the user will be
 prompted to open and examine that file. Defaults to "needed".}
+
+\item{save.tables.locally}{Logical: If a table must be temporarily stored into a file
+for user inspection, should it be saved in the current working directory, or
+in R's temporary folder?}
 }
 \value{
 A list of movements with updated 'Valid' columns

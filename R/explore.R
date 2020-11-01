@@ -51,13 +51,19 @@
 #' @param override A vector of signals for which the user intends to manually
 #'  define which movement events are valid and invalid.
 #' @param plot.detections.by The type of y axis desired for the individual
-#'  detection plots. One of "stations" (default) or "arrays".
+#'  detection plots. While the argument defaults to "auto", it can be hard-set 
+#'  to one of "stations" or "arrays".
 #' @param print.releases Logical: Should the release sites be printed in the
 #'  study area diagrams?
 #' @param report Logical. Should an HTML report be created at the end of the
 #'  analysis? NOTE: Setting report to TRUE will generate an HTML file in the current
 #'  directory. Additionally, if auto.open = TRUE (default), the web browser will
 #'  automatically be launched to open the report once the function terminates.
+#' @param save.detections Logical: Should the processed detections be saved for
+#'  future runs?
+#' @param save.tables.locally Logical: If a table must be temporarily stored into a file
+#'  for user inspection, should it be saved in the current working directory, or
+#'  in R's temporary folder?
 #' @param speed.error If a tag moves at a speed equal or greater than
 #'  \code{speed.error} (in metres per second), user intervention is suggested.
 #'  If left NULL (default), user intervention is never suggested.
@@ -72,8 +78,6 @@
 #' @param start.time Detection data prior to the timestamp set in
 #'  \code{start.time} (in YYYY-MM-DD HH:MM:SS format) is not considered during
 #'  the analysis.
-#' @param save.detections Logical: Should the processed detections be saved for
-#'  future runs?
 #' @param stop.time Detection data posterior to the timestamp set in
 #'  \code{stop.time} (in YYYY-MM-DD HH:MM:SS format) is not considered during
 #'  the analysis.
@@ -146,8 +150,9 @@ explore <- function(
   discard.first = NULL,
   save.detections = FALSE,
   GUI = c("needed", "always", "never"),
+  save.tables.locally = FALSE,
   print.releases = TRUE,
-  plot.detections.by = c("stations", "arrays")) 
+  plot.detections.by = c("auto", "stations", "arrays")) 
 {
 
 # clean up any lost helpers
@@ -199,7 +204,7 @@ explore <- function(
   plot.detections.by <- aux$plot.detections.by
   rm(aux)
 
-  GUI <- checkGUI(GUI)
+  GUI <- checkGUI(GUI, save.tables.locally = save.tables.locally)
 # ------------------------
 
 # Store function call
@@ -224,6 +229,7 @@ explore <- function(
     ", auto.open = ", ifelse(auto.open, "TRUE", "FALSE"),
     ", save.detections = ", ifelse(save.detections, "TRUE", "FALSE"),
     ", GUI = '", GUI, "'",
+    ", save.tables.locally = '", ifelse(save.tables.locally, "TRUE", "FALSE"),
     ", print.releases = ", ifelse(print.releases, "TRUE", "FALSE"),
     ", plot.detections.by = '", plot.detections.by, "'",
     ")")
@@ -235,7 +241,9 @@ explore <- function(
   finished.unexpectedly <- TRUE
   on.exit({if (interactive() & finished.unexpectedly) emergencyBreak(the.function.call)}, add = TRUE)
 
-  on.exit(deleteHelpers(), add = TRUE)
+  if (!getOption("actel.debug", default = FALSE))
+    on.exit(deleteHelpers(), add = TRUE)
+
   on.exit(tryCatch(sink(), warning = function(w) {hide <- NA}), add = TRUE)
 # --------------------------------------
 
@@ -267,6 +275,7 @@ explore <- function(
   dot <- study.data$dot
   arrays <- study.data$arrays
   dotmat <- study.data$dotmat
+  paths <- study.data$paths
   dist.mat <- study.data$dist.mat
   attributes(dist.mat)$speed.method <- speed.method
   detections.list <- study.data$detections.list
@@ -317,7 +326,8 @@ explore <- function(
   movement.names <- names(movements)
 
   if (any(link <- !override %in% extractSignals(movement.names))) {
-    appendTo(c("Screen", "Warning", "Report"), paste0("Override has been triggered for tag ", paste(override[link], collapse = ", "), " but ",
+    appendTo(c("Screen", "Warning", "Report"), paste0("Override has been triggered for ",
+      ifelse(sum(link) == 1, "tag ", "tags "), paste(override[link], collapse = ", "), " but ",
       ifelse(sum(link) == 1, "this signal was", "these signals were"), " not detected."))
     override <- override[!link]
   }
@@ -327,32 +337,33 @@ explore <- function(
     appendTo("debug", paste0("debug: Checking movement quality for tag ", tag,"."))
 
     if (is.na(match(extractSignals(tag), override))) {
-      release <- as.character(bio$Release.site[na.as.false(bio$Transmitter == tag)])
-      release <- unlist(strsplit(with(spatial, release.sites[release.sites$Standard.name == release, "Array"]), "|", fixed = TRUE))
+      output <- checkMinimumN(movements = movements[[tag]], tag = tag, minimum.detections = minimum.detections)
 
-      output <- checkMinimumN(movements = movements[[i]], tag = tag, minimum.detections = minimum.detections)
+      output <- checkImpassables(movements = output, tag = tag, bio = bio, detections = detections.list[[tag]], 
+                                 spatial = spatial, dotmat = dotmat, GUI = GUI, save.tables.locally = save.tables.locally)
 
-      output <- checkImpassables(movements = output, tag = tag, dotmat = dotmat, GUI = GUI)
-
-      output <- checkJumpDistance(movements = output, release = release, tag = tag, dotmat = dotmat,
-                                  jump.warning = jump.warning, jump.error = jump.error, GUI = GUI)
+      output <- checkJumpDistance(movements = output, bio = bio, tag = tag, dotmat = dotmat, paths = paths, arrays = arrays,
+                                  spatial = spatial, jump.warning = jump.warning, jump.error = jump.error, GUI = GUI,
+                                  detections = detections.list[[tag]], save.tables.locally = save.tables.locally)
 
       if (do.checkSpeeds) {
         temp.valid.movements <- simplifyMovements(movements = output, tag = tag, bio = bio, discard.first = discard.first,
-          speed.method = speed.method, dist.mat = dist.mat)
-        output <- checkSpeeds(movements = output, tag = tag, valid.movements = temp.valid.movements,
-          speed.warning = speed.warning, speed.error = speed.error, GUI = GUI)
+                                                  speed.method = speed.method, dist.mat = dist.mat)
+        output <- checkSpeeds(movements = output, tag = tag, detections = detections.list[[tag]], 
+                              valid.movements = temp.valid.movements, speed.warning = speed.warning, 
+                              speed.error = speed.error, GUI = GUI, save.tables.locally = save.tables.locally)
         rm(temp.valid.movements)
       }
 
       if (do.checkInactiveness) {
-        output <- checkInactiveness(movements = output, tag = tag, detections.list = detections.list[[tag]],
-          inactive.warning = inactive.warning, inactive.error = inactive.error,
-          dist.mat = dist.mat, GUI = GUI)
-      }
-    } else {
-      output <- overrideValidityChecks(moves = movements[[i]], tag = names(movements)[i], GUI = GUI) # nocov
-    }
+        output <- checkInactiveness(movements = output, tag = tag, detections = detections.list[[tag]],
+                                    inactive.warning = inactive.warning, inactive.error = inactive.error,
+                                    dist.mat = dist.mat, GUI = GUI, save.tables.locally = save.tables.locally)
+      }  
+    } else { # nocov start
+      output <- overrideValidityChecks(moves = movements[[tag]], tag = tag, detections = detections.list[[tag]], 
+                                       GUI = GUI, save.tables.locally = save.tables.locally)
+    } # nocov end
     return(output)
   })
   names(movements) <- movement.names
@@ -360,18 +371,20 @@ explore <- function(
 
   appendTo(c("Screen", "Report"), "M: Filtering valid array movements.")
 
-  valid.movements <- lapply(seq_along(movements), function(i){
-    output <- simplifyMovements(movements = movements[[i]], tag = names(movements)[i], bio = bio, discard.first = discard.first,
-      speed.method = speed.method, dist.mat = dist.mat)
-  })
-  names(valid.movements) <- names(movements)
-  valid.movements <- valid.movements[!unlist(lapply(valid.movements, is.null))]
+  valid.movements <- assembleValidMoves(movements = movements, bio = bio, discard.first = discard.first,
+                                         speed.method = speed.method, dist.mat = dist.mat)
 
-  aux <- list(valid.movements = valid.movements, spatial = spatial, rsp.info = list(bio = bio, analysis.type = "explore"))
+
+  appendTo(c("Screen", "Report"), "M: Compiling circular times.")
+
+  aux <- list(valid.movements = valid.movements,
+              spatial = spatial,
+              rsp.info = list(bio = bio, 
+                              analysis.type = "explore"))
   times <- getTimes(input = aux, move.type = "array", event.type = "arrival", n.events = "first")
   rm(aux)
 
-  appendTo("Screen", "M: Validating detections...")
+  appendTo("Screen", "M: Validating detections.")
 
   recipient <- validateDetections(detections.list = detections.list, movements = valid.movements)
   detections <- recipient$detections
@@ -383,10 +396,12 @@ explore <- function(
   deployments <- do.call(rbind.data.frame, deployments)
 
   # extra info for potential RSP analysis
-  rsp.info <- list(analysis.type = "explore", analysis.time = the.time, bio = bio, tz = tz, actel.version = utils::packageVersion("actel"))
+  rsp.info <- list(analysis.type = "explore", analysis.time = the.time, 
+                   bio = bio, tz = tz, actel.version = utils::packageVersion("actel"))
 
   if (!is.null(override))
-    override.fragment <- paste0('<span style="color:red">Manual mode has been triggered for **', length(override),'** tag(s).</span>\n')
+    override.fragment <- paste0('<span style="color:red">Manual mode has been triggered for **',
+                                length(override), '** tag(s).</span>\n')
   else
     override.fragment <- ""
 
@@ -578,8 +593,8 @@ printExploreRmd <- function(override.fragment, biometric.fragment, individual.pl
 
   work.path <- paste0(tempdir(), "/actel_report_auxiliary_files/")
 
- if (any(grepl("Ukn.", spatial$stations$Standard.name))) {
-    unknown.fragment <- paste0('<span style="color:red"> Number of relevant unknown receivers: **', sum(grepl("Ukn.", spatial$stations$Standard.name)), '**</span>\n')
+ if (!is.null(spatial$unknowns)) {
+    unknown.fragment <- paste0('<span style="color:red"> Number of relevant unknown receivers: **', sum(sapply(spatial$unknowns, length)), '** (of which ', length(spatial$unknowns$included),' were included)</span>\n')
   } else {
     unknown.fragment <- ""
   }
@@ -587,7 +602,7 @@ printExploreRmd <- function(override.fragment, biometric.fragment, individual.pl
     sensor.fragment <- paste0("### Sensor plots
 
 Note:
-  : You can choose to paint the values by section by setting `plot.detections.by = 'arrays'` during the analysis.
+  : The colouring in these plots will follow that of the individual detection plots, which can be modified using `plot.detections.by`.
   : The data used for these graphics is stored in the `valid.detections` object.
   : You can replicate these graphics and edit them as needed using the `plotSensors()` function.
 
@@ -597,6 +612,21 @@ Note:
   }
 
   report <- readr::read_file(paste0(tempdir(), "/temp_log.txt"))
+  report <- gsub("(\\\\|\")", "\\\\\\1", report)
+
+  if (file.exists(paste0(tempdir(), '/temp_warnings.txt'))) {
+    warning.messages <- gsub("\\r", "", readr::read_file(paste0(tempdir(), '/temp_warnings.txt')))
+    warning.messages <- gsub("(\\\\|\")", "\\\\\\1", warning.messages)
+  } else {
+    warning.messages <- 'No warnings were raised during the analysis.'
+  }
+
+  if (file.exists(paste0(tempdir(), '/temp_comments.txt'))) {
+    comment.fragment <- gsub("\\r", "", readr::read_file(paste0(tempdir(), '/temp_comments.txt')))
+    comment.fragment <- gsub("(\\\\|\")", "\\\\\\1", comment.fragment)
+  } else {
+    comment.fragment <- 'No comments were included during the analysis.'
+  }
 
   oldoptions <- options(knitr.kable.NA = "-")
   on.exit(options(oldoptions), add = TRUE)
@@ -655,17 +685,13 @@ Release sites are marked with "R.S.". Arrays connected with an arrow indicate th
 ### Warning messages
 
 ```{r warnings, echo = FALSE, comment = NA}
-cat("', ifelse(file.exists(paste0(tempdir(), '/temp_warnings.txt')),
-  gsub("\\r", "", readr::read_file(paste0(tempdir(), '/temp_warnings.txt'))),
-  'No warnings were raised during the analysis.'), '")
+cat("', warning.messages, '")
 ```
 
 ### User comments
 
 ```{r comments, echo = FALSE, comment = NA}
-cat("', ifelse(file.exists(paste0(tempdir(), '/temp_comments.txt')),
-  gsub("\\r", "", readr::read_file(paste0(tempdir(), '/temp_comments.txt'))),
-  'No comments were included during the analysis.'), '")
+cat("', comment.fragment, '")
 ```
 
 ', ifelse(biometric.fragment == '', '', paste0('### Biometric graphics
@@ -711,7 +737,7 @@ Note:
 ### Full log
 
 ```{r log, echo = FALSE, comment = NA}
-cat("', gsub("\\r", "", readr::read_file(paste0(tempdir(), '/temp_log.txt'))), '")
+cat("', gsub("\\r", "", report), '")
 ```
 
 '), fill = TRUE)

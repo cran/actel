@@ -1,12 +1,25 @@
+#' movements.R arguments
+#' @param arrmoves the array movements list
+#' @param secmoves the section movements list
+#' @param bio The biometrics table.
+#' @param detections.list A list of the detections split by each target tag.
+#' @param dist.mat A matrix of the distances between the deployed ALS.
+#' @param spatial The spatial list.
+#' @param arrays A list containing information for each array.
+#' @param movements the movement dataframe for the tag being analysed.
+#' @param tag The tag ID of the animal currently being analysed
+#' @param type The type of movements being analysed. One of "array" or "section".
+#' @param valid.dist Logical: Is a valid distances matrix being used?
+#' @name move_args
+#' @keywords internal
+NULL
+
 #' Group movements
 #'
 #' Crawls trough the detections of each tag and groups them based on ALS arrays and time requirements.
-#'
-#' @param detections.list A list of the detections split by each target tag, created by splitDetections.
-#' @param dist.mat A matrix of the distances between the deployed ALS.
+#' 
+#' @inheritParams move_args
 #' @inheritParams explore
-#' @inheritParams splitDetections
-#' @inheritParams loadDetections
 #'
 #' @return A list containing the movement events for each tag.
 #'
@@ -31,6 +44,7 @@ groupMovements <- function(detections.list, bio, spatial, speed.method, max.inte
         if (attributes(dist.mat)$valid) {
           recipient <- data.frame(
             Array = NA_character_,
+            Section = NA_character_,
             Detections = NA_integer_,
             First.station = NA_character_,
             Last.station = NA_character_,
@@ -45,6 +59,7 @@ groupMovements <- function(detections.list, bio, spatial, speed.method, max.inte
         } else {
           recipient <- data.frame(
             Array = NA_character_,
+            Section = NA_character_,
             Detections = NA_integer_,
             First.station = NA_character_,
             Last.station = NA_character_,
@@ -67,6 +82,7 @@ groupMovements <- function(detections.list, bio, spatial, speed.method, max.inte
             start <- all.shifts[j - 1] + 1
           stop <- all.shifts[j]
           recipient[z, "Array"] <<- paste(x$Array[start])
+          recipient[z, "Section"] <<- paste(x$Section[start])
           recipient[z, "Detections"] <<- stop - start + 1
           recipient[z, "First.station"] <<- paste(x$Standard.name[start])
           recipient[z, "First.time"] <<- x$Timestamp[start]
@@ -120,9 +136,8 @@ groupMovements <- function(detections.list, bio, spatial, speed.method, max.inte
 #'
 #' Remove invalid movement events and recalculate times/speeds.
 #'
+#' @inheritParams move_args
 #' @inheritParams explore
-#' @inheritParams groupMovements
-#' @param movements A list of movements for each target tag, created by groupMovements.
 #'
 #' @return The movement data frame containing only valid events for the target tag.
 #'
@@ -157,9 +172,8 @@ simplifyMovements <- function(movements, discard.first, tag, bio, speed.method, 
 #'
 #' Triggers movementTimes and also calculates the speed between events.
 #'
+#' @inheritParams move_args
 #' @inheritParams explore
-#' @inheritParams simplifyMovements
-#' @inheritParams groupMovements
 #'
 #' @return The movement data frame with speed calculations for the target tag.
 #'
@@ -193,9 +207,7 @@ movementSpeeds <- function(movements, speed.method, dist.mat) {
 #'
 #' Determines the duration of an event and the time from an event to the next.
 #'
-#' @inheritParams simplifyMovements
-#' @inheritParams movementSpeeds
-#' @param type The type of movements being analysed. One of "array" or "section".
+#' @inheritParams move_args
 #'
 #' @return The movement data frame with time calculations for the target tag.
 #'
@@ -216,7 +228,7 @@ movementTimes <- function(movements, type = c("array", "section")){
       h <- floor(s / 3600)
       s <- s - (3600 * h)
       m <- floor(s / 60)
-      s <- s - (60 * m)
+      s <- round(s - (60 * m), 0)
       if (m < 10)
         m <- paste0("0", m)
       if (s < 10)
@@ -234,7 +246,7 @@ movementTimes <- function(movements, type = c("array", "section")){
       h <- floor(s / 3600)
       s <- s - (3600 * h)
       m <- floor(s / 60)
-      s <- s - (60 * m)
+      s <- round(s - (60 * m), 0)
       if (m < 10)
         m <- paste0("0", m)
       if (s < 10)
@@ -247,11 +259,8 @@ movementTimes <- function(movements, type = c("array", "section")){
 
 #' Calculate time and speed since release.
 #'
-#' @inheritParams simplifyMovements
+#' @inheritParams move_args
 #' @inheritParams explore
-#' @inheritParams groupMovements
-#' @inheritParams movementSpeeds
-#' @param tag The tag ID of the animal currently being analysed
 #'
 #' @return The movement data frame containing time and speed from release to first event.
 #'
@@ -267,7 +276,7 @@ speedReleaseToFirst <- function(tag, bio, movements, dist.mat, speed.method){
     h <- floor(s / 3600)
     s <- s - (3600 * h)
     m <- floor(s / 60)
-    s <- s - (60 * m)
+    s <- round(s - (60 * m), 0)
     if (m < 10)
       m <- paste0("0", m)
     if (s < 10)
@@ -294,9 +303,7 @@ speedReleaseToFirst <- function(tag, bio, movements, dist.mat, speed.method){
 
 #' Compress array-movements into section-movements
 #'
-#' @inheritParams simplifyMovements
-#' @param spatial The spatial data list.
-#' @param valid.dist Logical: Is a valid distances matrix being used?
+#' @inheritParams move_args
 #'
 #' @return A data frame containing the section movements for the target tag.
 #'
@@ -372,10 +379,7 @@ sectionMovements <- function(movements, spatial, valid.dist) {
 
 #' update array-movement validity based on the section-movements
 #'
-#' @param arrmoves the array movements
-#' @param secmoves the section movements
-#'
-#' @return A data frame with the array movements for the target tag, with an updated 'Valid' column.
+#' @return A list with the updated array movements.
 #'
 #' @keywords internal
 #'
@@ -400,5 +404,79 @@ updateValidity <- function(arrmoves, secmoves) {
     })
   names(output) <- names(arrmoves)
   return(output)
+}
+
+#' Wrapper for simplifyMovements
+#' 
+#' @inheritParams move_args
+#' @inheritParams explore
+#' @param movements A list of movements for each tag.
+#' 
+#' @return A list of valid movements
+#' 
+#' @keywords internal
+#' 
+assembleValidMoves <- function(movements, bio, discard.first, speed.method, dist.mat) {
+  appendTo("debug", "Running assembleValidMoves.")
+  counter <- 0
+  if (interactive())
+    pb <- txtProgressBar(min = 0, max = sum(sapply(movements, nrow)), style = 3, width = 60)
+
+  valid.movements <- lapply(seq_along(movements), function(i) {
+    output <- simplifyMovements(movements = movements[[i]], tag = names(movements)[i], bio = bio, 
+                                discard.first = discard.first, speed.method = speed.method, dist.mat = dist.mat)
+    counter <<- counter + nrow(movements[[i]])
+    if (interactive())
+      setTxtProgressBar(pb, counter)    
+    return(output)
+   })
+
+  if (interactive())
+    close(pb)
+  rm(counter)
+  
+  names(valid.movements) <- names(movements)
+  valid.movements <- valid.movements[!unlist(lapply(valid.movements, is.null))]
+  
+  return(valid.movements)  
+}
+  
+#' Wrapper for sectionMovements
+#' 
+#' @inheritParams move_args
+#' @inheritParams explore
+#' @param valid.moves A list of movements for each tag.
+#' 
+#' @return A list of valid movements
+#' 
+#' @keywords internal
+#' 
+assembleValidSecMoves <- function(valid.moves, spatial, valid.dist) {
+  appendTo("debug", "Running assembleValidSecMoves.")
+
+  counter <- 0
+  if (interactive())
+    pb <- txtProgressBar(min = 0, max = sum(sapply(valid.moves, nrow)), style = 3, width = 60)
+
+  secmoves <- lapply(seq_along(valid.moves), function(i) {
+    appendTo("debug", paste0("debug: Compiling valid section movements for tag ", names(valid.moves)[i],"."))
+
+    output <- sectionMovements(movements = valid.moves[[i]], spatial = spatial, 
+                               valid.dist = valid.dist)
+
+    counter <<- counter + nrow(valid.moves[[i]])
+    if (interactive())
+      setTxtProgressBar(pb, counter)    
+
+    return(output)
+  })
+
+  if (interactive())
+    close(pb)
+  rm(counter)
+  
+  names(secmoves) <- names(valid.moves)
+  
+  return(secmoves)  
 }
 

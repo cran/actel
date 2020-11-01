@@ -2,6 +2,37 @@
 
 Find out the main highlights of each update.
 
+## 1.2.0
+
+Fixes:
+  * Prevent warning during printing of the progression flowchart, related to overlapping array names (that could also lead to an actual error).
+  * Fix undesired behaviour in unknown receiver mechanisms and improve unknown handling.
+  * Prevent crash in array efficiency estimation if release sites have spaces.
+  * Prevent wrong output in array efficiency estimations if array names are contained within each other.
+  * Prevent missing arrays when finding array paths due to overlapping array names.
+  * Prevent crash in distancesMatrix if spatial contains a "longitude" or "latitude" column.
+  * **Fix silent bug that could cause array efficiency estimates to be misplaced in the output.**
+  * Prevent crash during circular plot saving caused by illegal characters in the file name.
+
+Enhancements:
+  * New functionality: expand events and edit the validity of individual detections.
+  * Added Section information to the detections and the movement tables.
+  * Automatically convert "-" to NA in the Data column of Thelma log files.
+  * Automatically rename Y axis in plotDetections to "Array" if type = "arrays".
+  * Added possibility to save orphan detection files for later inspection.
+  * Include detections source file in a new "Source.file" column.
+  * New argument 'save.tables.locally' allows the user to save temporary tables in the current working directory. Particularly useful for Mac users that cannot activate the graphical user interface.
+  * Improve job log recovery method so it is not as intrusive. Including new function recoverLog().
+  * Only display GUI windows once they are ready.
+  * Check for impassable jumps between release and first event too.
+  * Array live times are now calculated and included in the 'arrays' object.
+  * The 'deployments' object has been extended and now includes array and standard station name.
+  * actel can now dynamically check for array live times when checking jump distances, to avoid triggering warnings and errors simply because some arrays were not active.
+  * New `plotLive()` function allows the user to plot the periods during which each array was active. The option 'show.stations' can be used to plot each individual station live time as well.
+  * Group warnings if more than four of the same type of warnings shows up for any given tag.
+  * The argument `plot.detections.by` now defaults to 'auto', so actel can try to optimize space use in the detection plots.
+  * Included citation information for the recently accepted paper describing actel.
+
 ## actel 1.1.1
 
 Fixes:

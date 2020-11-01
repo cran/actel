@@ -4,14 +4,25 @@
 \alias{checkSpeeds}
 \title{check tag speeds against defined thresholds (in m/s)}
 \usage{
-checkSpeeds(movements, tag, valid.movements, speed.warning, speed.error, GUI)
+checkSpeeds(
+  movements,
+  tag,
+  detections,
+  valid.movements,
+  speed.warning,
+  speed.error,
+  GUI,
+  save.tables.locally
+)
 }
 \arguments{
-\item{movements}{The movements table}
+\item{movements}{The movements table for a specific tag.}
 
-\item{tag}{The tag being analysed}
+\item{tag}{The tag being analysed.}
 
-\item{valid.movements}{The valid movements table}
+\item{detections}{The detections data.frame for a specific tag.}
+
+\item{valid.movements}{The valid movements table for a specific tag.}
 
 \item{speed.warning}{If a tag moves at a speed equal or greater than
 \code{speed.warning} (in metres per second), a warning is issued. If left
@@ -28,6 +39,10 @@ when the possibility to invalidate events emerges. If "never", a graphical
 interface is never invoked. In this case, if the table to be displayed does
 not fit in R's console, a temporary file will be saved and the user will be
 prompted to open and examine that file. Defaults to "needed".}
+
+\item{save.tables.locally}{Logical: If a table must be temporarily stored into a file
+for user inspection, should it be saved in the current working directory, or
+in R's temporary folder?}
 }
 \value{
 A list of movements with updated 'Valid' columns
