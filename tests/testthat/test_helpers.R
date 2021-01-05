@@ -94,4 +94,60 @@ test_that("appendTo stores comments.", {
 	file.remove("temp_comments.txt")
 })
 
+test_that("splitN works as expected", {
+	x <- data.frame(V1 = 1:10, V2 = 1:10)
+	rownames(x) <- letters[1:10]
+	output <- splitN(x, 5)
+	expect_equal(length(output), 2)
+	expect_equal(output[[1]]$V1, 1:5)
+	expect_equal(output[[2]]$V2, 6:10)
+	expect_equal(rownames(output[[1]]), as.character(1:5))
+	expect_equal(rownames(output[[2]]), as.character(1:5))
+
+	output <- splitN(x, 5, row.names = TRUE)
+	expect_equal(length(output), 2)
+	expect_equal(output[[1]]$V1, 1:5)
+	expect_equal(output[[2]]$V2, 6:10)
+	expect_equal(rownames(output[[1]]), letters[1:5])
+	expect_equal(rownames(output[[2]]), letters[6:10])
+})
+
+test_that("createEventRanges works as expected", {
+	x <- createEventRanges(c(1,2,3,5,6,7,10))
+	expect_equal(x, c("1:3", "5:7", "10"))
+})
+
+test_that("recoverLog works as expected", {
+	if (file.exists("latest_actel_error_log.txt"))
+		file.remove("latest_actel_error_log.txt")
+	expect_error(recoverLog(), "No crash logs found")
+
+	sink("latest_actel_error_log.txt")
+cat("Actel R package report.
+Version: 1.2.0.9022
+
+Target folder: C:/Users/hdmfla/AppData/Local/Temp/Rtmp2tLEAI
+Timestamp: 2020-12-23 12:30:55
+Function: explore()
+
+M: Importing data. This process may take a while.
+Error: Could not find a 'biometrics.csv' file in the working directory.
+
+A fatal exception occurred, stopping the process!
+Found a bug? Report it here: https://github.com/hugomflavio/actel/issues
+
+-------------------
+Function call:
+-------------------
+explore(tz = 'Europe/Copenhagen', datapack = NULL, max.interval = 60, minimum.detections = 2, start.time = NULL, stop.time = NULL, speed.method = c('last to first'), speed.warning = NULL, speed.error = NULL, jump.warning = 2, jump.error = 3, inactive.warning = NULL, inactive.error = NULL, exclude.tags = NULL, override = NULL, report = FALSE, discard.orphans = FALSE, discard.first = NULL, auto.open = TRUE, save.detections = FALSE, GUI = 'needed', save.tables.locally = 'FALSE, print.releases = TRUE, plot.detections.by = 'auto')
+-------------------
+", fill = TRUE)	
+	sink()
+	expect_error(recoverLog(), "Please state the name of the output file")	
+	recoverLog("test.txt")
+	expect_true(file.exists("test.txt"))
+	file.remove("test.txt")
+	file.remove("latest_actel_error_log.txt")
+})
+
 setwd(tests.home)

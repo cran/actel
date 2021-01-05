@@ -12,7 +12,7 @@
 
 <meta name="author" content="Hugo Flávio" />
 
-<meta name="date" content="2020-11-01" />
+<meta name="date" content="2021-01-05" />
 
 <title>6.0) Beyond the three main analyses</title>
 
@@ -349,7 +349,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">6.0) Beyond the three main analyses</h1>
 <h4 class="author">Hugo Flávio</h4>
-<h4 class="date">2020-11-01</h4>
+<h4 class="date">2021-01-05</h4>
 
 
 
@@ -398,6 +398,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <li><a href="#simultaneous-and-cumulative-presence-at-one-or-more-arrays">Simultaneous and cumulative presence at one or more arrays</a></li>
 <li><a href="#plotting-individual-residency-for-individual-tags">Plotting individual residency for individual tags</a></li>
 <li><a href="#plotting-global-and-group-residency">Plotting global (and group) residency!</a></li>
+<li><a href="#plotting-array-live-times">Plotting array live times</a></li>
 <li><a href="#what-would-you-like-to-see-here">What would you like to see here?</a></li>
 </ol>
 </div>
@@ -667,6 +668,18 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <a class="sourceLine" id="cb16-8" title="8"><span class="co"># Keep in mind that you cannot use the arguments &#39;group&#39; and &#39;sections&#39; at the same time!</span></a>
 <a class="sourceLine" id="cb16-9" title="9"><span class="co"># But you can see aggregated results for multiple sections, e.g.:</span></a>
 <a class="sourceLine" id="cb16-10" title="10"><span class="kw">plotRatios</span>(results, <span class="dt">sections =</span> <span class="kw">c</span>(<span class="st">&quot;River&quot;</span>, <span class="st">&quot;River-Fjord&quot;</span>, <span class="st">&quot;Fjord&quot;</span>), <span class="dt">type =</span> <span class="st">&quot;percentages&quot;</span>)</a></code></pre></div>
+</div>
+<div id="plotting-array-live-times" class="section level2">
+<h2>Plotting array live times</h2>
+<p>There are multiple reasons why some arrays could be offline during parts of the study. Perhaps a receiver was lost, or the location became inaccessible. actel accounts for array downtimes when calculating array jumps, and you can see those downtimes too using the function plotLive().</p>
+<p>This function is very straight foward, and works both on the output of one of the main analyses, or on the output of preload().</p>
+<p>E.g.:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb17-1" title="1"><span class="co"># assuming &#39;results&#39; is the output of an actel analysis</span></a>
+<a class="sourceLine" id="cb17-2" title="2"><span class="kw">plotLive</span>(results)</a>
+<a class="sourceLine" id="cb17-3" title="3"></a>
+<a class="sourceLine" id="cb17-4" title="4"><span class="co"># You can also specify which arrays should be displayed, if individual stations should show</span></a>
+<a class="sourceLine" id="cb17-5" title="5"><span class="co"># up or not, and customise aesthetics:</span></a>
+<a class="sourceLine" id="cb17-6" title="6"><span class="kw">plotLive</span>(results, <span class="dt">array =</span> <span class="st">&quot;A1&quot;</span>, <span class="dt">show.stations =</span> <span class="ot">FALSE</span>, <span class="dt">array.size =</span> <span class="dv">3</span>)</a></code></pre></div>
 </div>
 <div id="what-would-you-like-to-see-here" class="section level2">
 <h2>What would you like to see here?</h2>

@@ -331,9 +331,9 @@ invalidateEvents <- function(displayed.moves, all.moves, detections, tag, GUI, s
               appendTo(c("Screen", "Report"), paste0("M: ", length(the.rows), " movement event(s) from tag ", tag," were rendered invalid per user command."))
             
             if (colnames(all.moves)[1] == "Section")
-              text.to.display <- "Would you like to render any more movement event invalid?(y/n/comment) "
+              text.to.display <- "Would you like to render any more movement events invalid?(y/n/comment) "
             else
-              text.to.display <- "Would you like to render any more movement event invalid, or expand an event?(y/n/comment) "
+              text.to.display <- "Would you like to render any more movement events invalid, or expand an event?(y/n/comment) "
 
             decision <- userInput(text.to.display,
                                   choices = c("y", "n", "comment"), tag = tag, hash = "# invalidate more?")
@@ -734,15 +734,16 @@ transferValidity <- function(from, to) { # nocov start
 #' Skips all validity checks for a tag and allows the user to freely invalidate events
 #'
 #' @inheritParams user_interaction_args
+#' @param n A string indicating the overall progress.
 #'
 #' @return A data frame containing the movements for the target tag
 #'
 #' @keywords internal
 #'
-overrideValidityChecks <- function(moves, detections, tag, GUI, save.tables.locally) { # nocov start
+overrideValidityChecks <- function(moves, detections, tag, GUI, save.tables.locally, n) { # nocov start
   appendTo("debug", "Starting overrideValidityChecks.")
   message("----------------------------")
-  appendTo(c("Screen", "Report"), trigger <- paste0("M: Override has been triggered for tag ", tag, ". Entering full manual mode."))
+  appendTo(c("Screen", "Report"), trigger <- paste0("M: Override has been triggered for tag ", tag, " ", n, ". Entering full manual mode."))
   moves <- tableInteraction(moves = moves, detections = detections, tag = tag, 
                             trigger = trigger, GUI = GUI, save.tables.locally = save.tables.locally)
   attributes(moves)$p.type <- "Overridden"

@@ -147,8 +147,13 @@ migration <- function(
   GUI = c("needed", "always", "never"),
   save.tables.locally = FALSE,
   print.releases = TRUE,
-  plot.detections.by = c("auto", "stations", "arrays"))
+  plot.detections.by,
+  detections.y.axis = c("auto", "stations", "arrays"))
 {
+
+# check deprecated argument
+  if (!missing(plot.detections.by))
+    stop("'plot.detections.by' has been deprecated. Please use 'detections.y.axis' instead.", call. = FALSE)
 
 # clean up any lost helpers
   deleteHelpers()
@@ -193,14 +198,14 @@ migration <- function(
                         if.last.skip.section = if.last.skip.section,
                         replicates = replicates,
                         section.order = section.order,
-                        plot.detections.by = plot.detections.by)
+                        detections.y.axis = detections.y.axis)
 
   speed.method <- aux$speed.method
   speed.warning <- aux$speed.warning
   speed.error <- aux$speed.error
   inactive.warning <- aux$inactive.warning
   inactive.error <- aux$inactive.error
-  plot.detections.by <- aux$plot.detections.by
+  detections.y.axis <- aux$detections.y.axis
   rm(aux)
 
   GUI <- checkGUI(GUI, save.tables.locally)
@@ -235,7 +240,7 @@ migration <- function(
     ", GUI = '", GUI, "'",
     ", save.tables.locally = ", ifelse(save.tables.locally, "TRUE", "FALSE"),
     ", print.releases = ", ifelse(print.releases, "TRUE", "FALSE"),
-    ", plot.detections.by = '", plot.detections.by, "'",
+    ", detections.y.axis = '", detections.y.axis, "'",
     ")")
 
   appendTo("debug", the.function.call)
@@ -382,37 +387,39 @@ migration <- function(
 
   movements <- lapply(seq_along(movements), function(i) {
     tag <- names(movements)[i]
+    counter <- paste0("(", i, "/", length(movements), ")")
+
     appendTo("debug", paste0("debug: Checking movement quality for tag ", tag,"."))
 
     if (is.na(match(extractSignals(tag), override))) {
-      output <- checkMinimumN(movements = movements[[tag]], tag = tag, minimum.detections = minimum.detections)
+      output <- checkMinimumN(movements = movements[[tag]], tag = tag, minimum.detections = minimum.detections, n = counter)
 
       output <- checkUpstream(movements = output, tag = tag, detections = detections.list[[tag]], spatial = spatial,
-                              bio = bio, arrays = arrays, GUI = GUI, save.tables.locally = save.tables.locally)
+                              bio = bio, arrays = arrays, GUI = GUI, save.tables.locally = save.tables.locally, n = counter)
 
-      output <- checkImpassables(movements = output, tag = tag, bio = bio, detections = detections.list[[tag]], 
+      output <- checkImpassables(movements = output, tag = tag, bio = bio, detections = detections.list[[tag]], n = counter, 
                                  spatial = spatial, dotmat = dotmat, GUI = GUI, save.tables.locally = save.tables.locally)
 
       output <- checkJumpDistance(movements = output, bio = bio, tag = tag, dotmat = dotmat, paths = paths, arrays = arrays,
                                   spatial = spatial, jump.warning = jump.warning, jump.error = jump.error, GUI = GUI,
-                                  detections = detections.list[[tag]], save.tables.locally = save.tables.locally)
+                                  detections = detections.list[[tag]], save.tables.locally = save.tables.locally, n = counter)
 
       if (do.checkSpeeds) {
         temp.valid.movements <- simplifyMovements(movements = output, tag = tag, bio = bio, discard.first = discard.first,
                                                   speed.method = speed.method, dist.mat = dist.mat)
         output <- checkSpeeds(movements = output, tag = tag, valid.movements = temp.valid.movements, 
-                              detections = detections.list[[tag]], speed.warning = speed.warning, 
+                              detections = detections.list[[tag]], speed.warning = speed.warning, n = counter, 
                               speed.error = speed.error, GUI = GUI, save.tables.locally = save.tables.locally)
         rm(temp.valid.movements)
       }
 
       if (do.checkInactiveness) {
-        output <- checkInactiveness(movements = output, tag = tag, detections = detections.list[[tag]],
+        output <- checkInactiveness(movements = output, tag = tag, detections = detections.list[[tag]], n = counter,
                                     inactive.warning = inactive.warning, inactive.error = inactive.error,
                                     dist.mat = dist.mat, GUI = GUI, save.tables.locally = save.tables.locally)
       }
     } else {
-      output <- overrideValidityChecks(moves = movements[[tag]], detections = detections.list[[tag]], # nocov
+      output <- overrideValidityChecks(moves = movements[[tag]], detections = detections.list[[tag]], n = counter, # nocov
                                        tag = tag, GUI = GUI, save.tables.locally = save.tables.locally) # nocov
     }
     return(output)
@@ -426,11 +433,13 @@ migration <- function(
 
   section.movements <- lapply(seq_along(movements), function(i) {
     tag <- names(movements)[i]
+    counter <- paste0("(", i, "/", length(movements), ")")
     appendTo("debug", paste0("debug: Compiling section movements for tag ", tag,"."))
+
     aux <- sectionMovements(movements = movements[[i]], spatial = spatial, valid.dist = attributes(dist.mat)$valid)
     if (!is.null(aux)) {
       output <- checkLinearity(secmoves = aux, tag = tag, spatial = spatial, arrays = arrays, 
-                               GUI = GUI, save.tables.locally = save.tables.locally)
+                               GUI = GUI, save.tables.locally = save.tables.locally, n = counter)
       return(output)
     } else {
       return(NULL)
@@ -660,7 +669,7 @@ migration <- function(
                                          spatial = spatial,
                                          status.df = status.df,
                                          rsp.info = rsp.info,
-                                         type = plot.detections.by)
+                                         y.axis = detections.y.axis)
 
     circular.plots <- printCircular(times = timesToCircular(times),
                                     bio = bio)
@@ -672,7 +681,7 @@ migration <- function(
       sensor.plots <- printSensorData(detections = valid.detections, 
                                       spatial = spatial,
                                       rsp.info = rsp.info, 
-                                      type = plot.detections.by)
+                                      colour.by = detections.y.axis)
     } else {
       sensor.plots <- NULL
     }
@@ -694,7 +703,9 @@ migration <- function(
 # ------------------
 
 # print html report
+  trigger.report.error.message <- TRUE
   if (report) {
+    on.exit({if (trigger.report.error.message) message("M: Producing the report failed. If you have saved a copy of the results, you can reload them using dataToList().")}, add = TRUE)
     if (file.exists(reportname <- "actel_migration_report.html")) {
       continue <- TRUE
       index <- 1
@@ -726,7 +737,7 @@ migration <- function(
                         deployments = deployments,
                         valid.detections = valid.detections,
                         detections = detections,
-                        plot.detections.by = plot.detections.by)
+                        detections.y.axis = detections.y.axis)
 
     appendTo("debug", "debug: Converting report to html")
     rmarkdown::render(input = paste0(tempdir(), "/actel_report_auxiliary_files/actel_migration_report.Rmd"),
@@ -739,6 +750,7 @@ migration <- function(
       browseURL(reportname)
     } # nocov end
   }
+  trigger.report.error.message <- FALSE
 # ------------------
 
   jobname <- paste0(gsub(" |:", ".", as.character(Sys.time())), ".actel.log.txt")
@@ -806,7 +818,7 @@ migration <- function(
 printMigrationRmd <- function(override.fragment, biometric.fragment, section.overview,
   efficiency.fragment, display.progression, array.overview.fragment, survival.graph.size,
   individual.plots, circular.plots, sensor.plots, spatial, deployments, valid.detections, 
-  detections, plot.detections.by){
+  detections, detections.y.axis){
 
   work.path <- paste0(tempdir(), "/actel_report_auxiliary_files/")
 
@@ -819,7 +831,7 @@ printMigrationRmd <- function(override.fragment, biometric.fragment, section.ove
     sensor.fragment <- paste0("### Sensor plots
 
 Note:
-  : The colouring in these plots will follow that of the individual detection plots, which can be modified using `plot.detections.by`.
+  : The colouring in these plots will follow that of the individual detection plots, which can be modified using `detections.y.axis`.
   : The data used for these graphics is stored in the `valid.detections` object.
   : You can replicate these graphics and edit them as needed using the `plotSensors()` function.
 
@@ -861,7 +873,7 @@ output:
 
 ### Summary
 
-Target folder: ', stringr::str_extract(pattern = '(?<=Target folder: )[^\r]*', string = report), '
+Target folder: ', stringr::str_extract(pattern = '(?<=Target folder: )[^\r|^\n]*', string = report), '
 
 Timestamp: **', stringr::str_extract(pattern = '(?<=Timestamp: )[^\r|^\n]*', string = report), '**
 
@@ -988,12 +1000,12 @@ Note:
 ### Individual detection plots
 
 Note:
-  : You can choose to plot detections by station or by array using the `plot.detections.by` argument.
-  : The detections are coloured by ', ifelse(plot.detections.by == "stations", 'array', 'section'), '. The vertical black dashed line shows the time of release. The vertical grey dashed lines show the assigned moments of entry and exit for each study area section. The full dark-grey line shows the movement events considered valid, while the dashed dark-grey line shows the movement events considered invalid.
-', ifelse(plot.detections.by == "stations", '  : The movement event lines move straight between the first and last station of each event (i.e. in-between detections will not be individually linked by the line).\n', ''),
+  : You can choose to plot detections by station or by array using the `detections.y.axis` argument.
+  : The detections are coloured by ', ifelse(detections.y.axis == "stations", 'array', 'section'), '. The vertical black dashed line shows the time of release. The vertical grey dashed lines show the assigned moments of entry and exit for each study area section. The full dark-grey line shows the movement events considered valid, while the dashed dark-grey line shows the movement events considered invalid.
+', ifelse(detections.y.axis == "stations", '  : The movement event lines move straight between the first and last station of each event (i.e. in-between detections will not be individually linked by the line).\n', ''),
 '  : Manually **edited** tag detections are highlighted with **yellow** graphic borders.
   : Manually **overridden** tag detections are highlighted with **red** graphic borders.
-  : The ', ifelse(plot.detections.by == "stations", 'stations', 'arrays'), ' have been aligned by ', ifelse(plot.detections.by == "stations", 'array', 'section'), ', following the order provided ', ifelse(plot.detections.by == "stations", '', 'either '), 'in the spatial input', ifelse(plot.detections.by == "stations", '.', ' or the `section.order` argument.'), '
+  : The ', ifelse(detections.y.axis == "stations", 'stations', 'arrays'), ' have been aligned by ', ifelse(detections.y.axis == "stations", 'array', 'section'), ', following the order provided ', ifelse(detections.y.axis == "stations", '', 'either '), 'in the spatial input', ifelse(detections.y.axis == "stations", '.', ' or the `section.order` argument.'), '
   : You can replicate these graphics and edit them as needed using the `plotDetections()` function.
   : You can also see the movement events of multiple tags simultaneously using the `plotMoves()` function.
   : The data used in these graphics is stored in the `detections` and `movements` objects (and respective valid counterparts).

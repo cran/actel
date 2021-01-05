@@ -1,6 +1,6 @@
 Package: actel
 Title: Acoustic Telemetry Data Analysis
-Version: 1.2.0
+Version: 1.2.1
 Authors@R: person("Hugo", "Flávio", role = c("aut", "cre"), email = "hflavio@wlu.ca", comment = c(ORCID = "0000-0002-5174-1197"))
 Description: Designed for studies where animals tagged with acoustic tags are expected
     to move through receiver arrays. This package combines the advantages of automatic sorting and checking 
@@ -24,8 +24,8 @@ VignetteBuilder: knitr
 URL: https://github.com/hugomflavio/actel
 BugReports: https://github.com/hugomflavio/actel/issues
 NeedsCompilation: no
-Packaged: 2020-11-01 08:49:04 UTC; hdmfla
+Packaged: 2021-01-05 21:07:16 UTC; hdmfla
 Author: Hugo Flávio [aut, cre] (<https://orcid.org/0000-0002-5174-1197>)
 Maintainer: Hugo Flávio <hflavio@wlu.ca>
 Repository: CRAN
-Date/Publication: 2020-11-01 15:50:06 UTC
+Date/Publication: 2021-01-05 21:40:02 UTC

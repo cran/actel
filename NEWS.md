@@ -2,7 +2,24 @@
 
 Find out the main highlights of each update.
 
-## 1.2.0
+## actel 1.2.1
+
+Fixes:
+  * Prevent crash in residency if the overall data period starts in winter time but the data for a given fish starts in summer time.
+  * Prevent crash in residency caused by missing "save.tables.locally" argument.
+  * Fix bug related to wrong type of detections object in preload().
+  * Fix bad formatting of the summary section in reports produced in Linux OS's.
+
+Changes:
+  * The argument `plot.detections.by` in functions explore, migration and residency has been renamed to `detections.y.axis`.
+  * The argument `type` in the function plotDetections has been renamed to `y.axis`.
+
+Enhancements:
+  * Verify that deployments do not end before they start.
+  * Improve verification of station and array names, to avoid troublesome characters slipping through and potentially crashing the analyses.
+
+
+## actel 1.2.0
 
 Fixes:
   * Prevent warning during printing of the progression flowchart, related to overlapping array names (that could also lead to an actual error).

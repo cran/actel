@@ -19,6 +19,7 @@
 #'  not fit in R's console, a temporary file will be saved and the user will be
 #'  prompted to open and examine that file. Defaults to "needed".
 #' @param movements The movements table for a specific tag.
+#' @param n A string indicating the overall progress.
 #' @param release The release location of the animal.
 #' @param secmoves the section movements list.
 #' @param spatial A list of spatial objects in the study area.
@@ -44,7 +45,7 @@ NULL
 #'
 checkArguments <- function(dp, tz, minimum.detections, max.interval, speed.method = c("last to first", "last to last"),
   speed.warning, speed.error, start.time, stop.time, report, auto.open, save.detections, jump.warning, jump.error,
-  inactive.warning, inactive.error, exclude.tags, override, print.releases, plot.detections.by = c("auto", "stations", "arrays"),
+  inactive.warning, inactive.error, exclude.tags, override, print.releases, detections.y.axis = c("auto", "stations", "arrays"),
   if.last.skip.section = NULL, replicates = NULL, section.minimum = NULL, section.order = NULL, timestep = c("days", "hours")) {
   appendTo("debug", "Running checkArguments.")
 
@@ -169,9 +170,9 @@ checkArguments <- function(dp, tz, minimum.detections, max.interval, speed.metho
   if (!is.logical(print.releases))
     stopAndReport("'print.releases' must be logical.")
 
-  if (!is.character(plot.detections.by))
-    stopAndReport("'plot.detections.by' should be one of 'stations' or 'arrays'")
-  plot.detections.by <- match.arg(plot.detections.by)
+  if (!is.character(detections.y.axis))
+    stopAndReport("'detections.y.axis' should be one of 'stations' or 'arrays'")
+  detections.y.axis <- match.arg(detections.y.axis)
 
   if (!is.character(timestep))
     stopAndReport("'timestep' should be one of 'days' or 'hours'")
@@ -205,7 +206,7 @@ checkArguments <- function(dp, tz, minimum.detections, max.interval, speed.metho
               speed.error = speed.error,
               inactive.warning = inactive.warning,
               inactive.error = inactive.error,
-              plot.detections.by = plot.detections.by,
+              detections.y.axis = detections.y.axis,
               timestep = timestep))
 }
 
@@ -387,10 +388,10 @@ checkDupDetections <- function(input) {
 #'
 #' @keywords internal
 #'
-checkMinimumN <- function(movements, minimum.detections, tag) {
+checkMinimumN <- function(movements, minimum.detections, tag, n) {
   appendTo("debug", "Running checkMinimumN.")  
   if (nrow(movements) == 1 && movements$Detections < minimum.detections) {
-    appendTo(c("Screen", "Report", "Warning"), paste0("Tag ", tag, " only has one movement event (", movements$Array, ") with ", movements$Detections, " detections. Considered invalid."))
+    appendTo(c("Screen", "Report", "Warning"), paste0("Tag ", tag, " ", n, " only has one movement event (", movements$Array, ") with ", movements$Detections, " detections. Considered invalid."))
     movements$Valid <- FALSE
   }
   return(movements)
@@ -407,7 +408,7 @@ checkMinimumN <- function(movements, minimum.detections, tag) {
 #' @keywords internal
 #'
 checkSpeeds <- function(movements, tag, detections, valid.movements, 
-  speed.warning, speed.error, GUI, save.tables.locally) {
+  speed.warning, speed.error, GUI, save.tables.locally, n) {
   appendTo("debug", "Running checkSpeeds.")
   the.warning <- NULL
   vm <- valid.movements
@@ -416,7 +417,7 @@ checkSpeeds <- function(movements, tag, detections, valid.movements,
     link <- which(vm$Average.speed.m.s >= speed.warning)
     if (link[1] == 1) {
       appendTo(c("Report", "Warning", "Screen"),
-        the.warning <- paste0("Tag ", tag, " had an average speed of ", round(vm$Average.speed.m.s[1], 2),
+        the.warning <- paste0("Tag ", tag, " ", n, " had an average speed of ", round(vm$Average.speed.m.s[1], 2),
           " m/s from release to first valid event (Release -> ", vm$Array[1], ")."))
       the.warning <- paste("Warning:", the.warning)
       link <- link[-1]
@@ -427,12 +428,12 @@ checkSpeeds <- function(movements, tag, detections, valid.movements,
         warning.counter <- warning.counter + 1
         if (warning.counter < 5) {
           appendTo(c("Report", "Warning", "Screen"),
-            other.warning <- paste0("Tag ", tag, " had an average speed of ", round(vm$Average.speed.m.s[link[i]], 2),
+            other.warning <- paste0("Tag ", tag, " ", n, " had an average speed of ", round(vm$Average.speed.m.s[link[i]], 2),
               " m/s from valid event ", link[i] - 1, " to ", link[i], " (",vm$Array[link[i] - 1], " -> ", vm$Array[link[i]], ")."))
           other.warning <- paste("Warning:", other.warning)
           the.warning <- paste0(the.warning, "\n", other.warning)
         } else {
-          final.warning <- paste0("Warning: Tag ", tag, " had an average speed higher than ", speed.warning, " m/s in ", warning.counter, " events (of which the first 4 are displayed above).")
+          final.warning <- paste0("Warning: Tag ", tag, " ", n, " had an average speed higher than ", speed.warning, " m/s in ", warning.counter, " events (of which the first 4 are displayed above).")
           message(paste0("\r", final.warning), appendLF = FALSE); flush.console()
         }
       }
@@ -462,7 +463,7 @@ checkSpeeds <- function(movements, tag, detections, valid.movements,
 #'
 #' @keywords internal
 #'
-checkInactiveness <- function(movements, tag, detections,
+checkInactiveness <- function(movements, tag, detections, n,
   inactive.warning, inactive.error, dist.mat, GUI, save.tables.locally) {
   Valid <- NULL
   appendTo("debug", "Running checkInactiveness.")
@@ -507,7 +508,7 @@ checkInactiveness <- function(movements, tag, detections,
         if (all(aux <= 1500)) {
           n.detections <- sum(valid.moves$Detections[start_i:Stop])
           appendTo(c("Report", "Warning", "Screen"),
-            the.warning <- paste0("Tag ", tag, " was detected ", n.detections,
+            the.warning <- paste0("Tag ", tag, " ", n, " was detected ", n.detections,
               " times at stations less than 1.5 km apart in array '", tail(breaks$values, 1),
               "' (", paste(the.stations, collapse = ", "), "), over ", days.spent,
               " days and then disappeared. Could it be inactive?"))
@@ -520,7 +521,7 @@ checkInactiveness <- function(movements, tag, detections,
         if (length(the.stations) <= 3) {
           n.detections <- sum(valid.moves$Detections[start_i:Stop])
           appendTo(c("Report", "Warning", "Screen"),
-            the.warning <- paste0("Tag ", tag, " was detected ", n.detections,
+            the.warning <- paste0("Tag ", tag, " ", n, " was detected ", n.detections,
               " times at three or less stations of array '", tail(breaks$values, 1),
               "' (", paste(the.stations, collapse = ", "), ") over ", days.spent,
               " days and then disappeared. Could it be inactive?"))
@@ -532,7 +533,7 @@ checkInactiveness <- function(movements, tag, detections,
       }
       # Trigger user interaction
       if (trigger.error) { # nocov start
-        appendTo("Screen", error.message <- paste0("M: Tag ", tag, " has been inactive for more than ", inactive.error," days. Inactiveness started on event ", start_i, " (", as.Date(valid.moves$First.time[start_i]),")."))
+        appendTo("Screen", error.message <- paste0("M: Tag ", tag, " ", n, " has been inactive for more than ", inactive.error," days. Inactiveness started on event ", start_i, " (", as.Date(valid.moves$First.time[start_i]),")."))
         movements <- tableInteraction(moves = movements, tag = tag, detections = detections, 
                                       trigger = paste0(the.warning, "\n", error.message), GUI = GUI,
                                       save.tables.locally = save.tables.locally)
@@ -551,7 +552,7 @@ checkInactiveness <- function(movements, tag, detections,
 #'
 #' @keywords internal
 #'
-checkImpassables <- function(movements, tag, bio, spatial, detections, dotmat, GUI, save.tables.locally){
+checkImpassables <- function(movements, tag, bio, spatial, detections, dotmat, GUI, save.tables.locally, n){
   appendTo("debug", "Running checkImpassables.")
   Valid <- NULL
 
@@ -559,15 +560,21 @@ checkImpassables <- function(movements, tag, bio, spatial, detections, dotmat, G
   release <- unlist(strsplit(with(spatial, release.sites[release.sites$Standard.name == release, "Array"]), "|", fixed = TRUE))
 
   restart <- TRUE
+  first.time <- TRUE
   while (restart) {
     restart <- FALSE
     warning.counter <- 0
     the.warning <- NULL
     valid.moves <- movements[(Valid)]
+    if (!first.time) {
+      message("------------------------------------")
+      appendTo(c("Screen", "Warning"), "The last interaction did not solve the impassable problem! See remaining problems below.\n         You can also press ESC to abort the current run and alter your spatial.txt file.")
+      message("------------------------------------")
+    }
     # check release movement
     if (sum(movements$Valid) > 0) {
       if(all(is.na(dotmat[as.character(release), as.character(valid.moves$Array[1])]))) {
-        appendTo(c("Screen", "Warning", "Report"), the.warning <- paste0("Tag ", tag, " made an impassable jump: It is not possible to go from release site ", as.character(release), " to ", as.character(valid.moves$Array[1]), ".\n         Please resolve this either by invalidating events or by adjusting your 'spatial.txt' file and restarting."))
+        appendTo(c("Screen", "Warning", "Report"), the.warning <- paste0("Tag ", tag, " ", n, " made an impassable jump: It is not possible to go from release site ", as.character(release), " to ", as.character(valid.moves$Array[1]), ".\n         Please resolve this either by invalidating events or by adjusting your 'spatial.txt' file and restarting."))
         the.warning <- paste("Warning:", the.warning)
         warning.counter <- warning.counter + 1
       }
@@ -582,7 +589,7 @@ checkImpassables <- function(movements, tag, bio, spatial, detections, dotmat, G
         for (i in which(is.na(distances))) {
           warning.counter <- warning.counter + 1
           if (warning.counter < 5) {
-            appendTo(c("Screen", "Warning", "Report"), other.warning <- paste0("Tag ", tag, " made an impassable jump in events ", i," to ", i + 1, ": It is not possible to go from array ", shifts[i, 1], " to ", shifts[i, 2], "."))
+            appendTo(c("Screen", "Warning", "Report"), other.warning <- paste0("Tag ", tag, " ", n, " made an impassable jump in events ", i," to ", i + 1, ": It is not possible to go from array ", shifts[i, 1], " to ", shifts[i, 2], "."))
             other.warning <- paste("Warning:", other.warning)
             the.warning <- paste0(the.warning, "\n", other.warning)
           } else {
@@ -607,6 +614,7 @@ checkImpassables <- function(movements, tag, bio, spatial, detections, dotmat, G
                                       trigger = the.warning, GUI = GUI, force = TRUE, 
                                       save.tables.locally = save.tables.locally)
         restart <- TRUE
+        first.time <- FALSE
       } else { # nocov end
         stop("Preventing analysis from entering interactive mode in a non-interactive session.")
       }
@@ -624,10 +632,10 @@ checkImpassables <- function(movements, tag, bio, spatial, detections, dotmat, G
 #'
 #' @keywords internal
 #'
-checkSMovesN <- function(secmoves, tag, section.minimum, GUI, save.tables.locally) {
+checkSMovesN <- function(secmoves, tag, section.minimum, GUI, save.tables.locally, n) {
   appendTo("debug", "Running checkSMovesN.")
   if (any(link <- secmoves$Detections < section.minimum)) {
-    appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Section movements with less than ", section.minimum, " detections are present for tag ", tag, "."))
+    appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Section movements with less than ", section.minimum, " detections are present for tag ", tag, " ", n, "."))
     if (interactive())
       secmoves <- tableInteraction(moves = secmoves, tag = tag, trigger = the.warning, # nocov
                                    GUI = GUI, save.tables.locally = save.tables.locally) # nocov
@@ -644,16 +652,16 @@ checkSMovesN <- function(secmoves, tag, section.minimum, GUI, save.tables.locall
 #'
 #' @keywords internal
 #'
-checkLinearity <- function(secmoves, tag, spatial, arrays, GUI, save.tables.locally) {
+checkLinearity <- function(secmoves, tag, spatial, arrays, GUI, save.tables.locally, n) {
   appendTo("debug", "Running checkLinearity.")
   sections <- names(spatial$array.order)
   back.check <- match(secmoves$Section, sections)
   turn.check <- rev(match(sections, rev(secmoves$Section))) # captures the last event of each section. Note, the values count from the END of the events
   if (is.unsorted(back.check)) {
       if (is.unsorted(turn.check, na.rm = TRUE))
-        appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Inter-section backwards movements were detected for tag ", tag, " and the last events are not ordered!"))
+        appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Inter-section backwards movements were detected for tag ", tag, " ", n, " and the last events are not ordered!"))
       else
-        appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Inter-section backwards movements were detected for tag ", tag, "."))
+        appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Inter-section backwards movements were detected for tag ", tag, " ", n, "."))
     if (interactive()) { # nocov start
       secmoves <- tableInteraction(moves = secmoves, tag = tag, trigger = the.warning, 
                                    GUI = GUI, force = FALSE, save.tables.locally = save.tables.locally)
@@ -699,7 +707,7 @@ checkReport <- function(report){
 #'
 #' @keywords internal
 #'
-checkUpstream <- function(movements, tag, bio, detections, arrays, spatial, GUI, save.tables.locally) {
+checkUpstream <- function(movements, tag, bio, detections, arrays, spatial, GUI, save.tables.locally, n) {
   appendTo("debug", "Running checkUpstream.")
   # NOTE: The NULL variables below are actually column names used by data.table.
   # This definition is just to prevent the package check from issuing a note due unknown variables.
@@ -718,7 +726,7 @@ checkUpstream <- function(movements, tag, bio, detections, arrays, spatial, GUI,
     return(movements)
 
   if (any(is.na(match(vm$Array, after.arrays)))) {
-    appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Tag ", tag, " was detected in an array that is not after its release site! Opening relevant data for inspection.\nExpected first array: ", release))
+    appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Tag ", tag, " ", n, " was detected in an array that is not after its release site! Opening relevant data for inspection.\nExpected first array: ", release))
     the.warning <- paste("Warning:", the.warning)
     if (interactive()) { # nocov start
       movements <- tableInteraction(moves = movements, tag = tag, detections = detections, 
@@ -738,7 +746,7 @@ checkUpstream <- function(movements, tag, bio, detections, arrays, spatial, GUI,
 #' @keywords internal
 #'
 checkJumpDistance <- function(movements, tag, bio, detections, spatial, arrays,
-  dotmat, paths, jump.warning, jump.error, GUI, save.tables.locally) {
+  dotmat, paths, jump.warning, jump.error, GUI, save.tables.locally, n) {
 
   appendTo("debug", "Running checkJumpDistance.")
   # NOTE: The NULL variables below are actually column names used by data.table.
@@ -804,7 +812,7 @@ checkJumpDistance <- function(movements, tag, bio, detections, spatial, arrays,
     if (release.steps > jump.warning) {
       # Trigger warning
       appendTo(c("Report", "Warning", "Screen"),
-        the.warning <- paste0("Tag ", tag, " jumped through ", 
+        the.warning <- paste0("Tag ", tag, " ", n, " jumped through ", 
           ifelse(say.at.least, "at least ", ""), release.steps - 1,
           ifelse(release.steps > 2, " arrays ", " array "),
           "from release to first valid event (Release -> ", vm$Array[1], ")."))
@@ -864,14 +872,14 @@ checkJumpDistance <- function(movements, tag, bio, detections, spatial, arrays,
             if (warning.counter < 5) {
               # Trigger warning
               appendTo(c("Report", "Warning", "Screen"),
-                other.warning <- paste0("Tag ", tag, " jumped through ",  
+                other.warning <- paste0("Tag ", tag, " ", n, " jumped through ",  
                   ifelse(say.at.least, "at least ", ""), move.steps[i] - 1,
                   ifelse(move.steps[i] > 2, " arrays ", " array "),
                   "in valid events ", i, " -> ", i + 1, " (", names(move.steps)[i], ")."))
               other.warning <- paste("Warning:", other.warning)
               the.warning <- paste0(the.warning, "\n", other.warning)
             } else {
-              final.warning <- paste0("Warning: Tag ", tag, " jumped ", jump.warning, " or more arrays on ", warning.counter, " occasions (of which the first 4 are displayed above).")
+              final.warning <- paste0("Warning: Tag ", tag, " ", n, " jumped ", jump.warning, " or more arrays on ", warning.counter, " occasions (of which the first 4 are displayed above).")
               message(paste0("\r", final.warning), appendLF = FALSE); flush.console()
             }
           }

@@ -24,7 +24,7 @@ checkArguments(
   exclude.tags,
   override,
   print.releases,
-  plot.detections.by = c("auto", "stations", "arrays"),
+  detections.y.axis = c("auto", "stations", "arrays"),
   if.last.skip.section = NULL,
   replicates = NULL,
   section.minimum = NULL,
@@ -82,7 +82,7 @@ function terminates.}
 future runs?}
 
 \item{jump.warning}{If a tag crosses a number of arrays equal or greater
-than \code{jump.error} without being detected, a warning is issued. If left
+than \code{jump.warning} without being detected, a warning is issued. If left
 NULL (default), no warnings are issued.}
 
 \item{jump.error}{If a tag crosses a number of arrays equal or greater than
@@ -90,7 +90,7 @@ NULL (default), no warnings are issued.}
 If left NULL (default), user intervention is never suggested.}
 
 \item{inactive.warning}{If a tag spends a number of days equal or greater
-than \code{inactive.error} in a given array at the tail of the respective
+than \code{inactive.warning} in a given array at the tail of the respective
 detections, a warning is issued. If left NULL (default), no warnings are
 issued.}
 
@@ -110,7 +110,7 @@ define which movement events are valid and invalid.}
 \item{print.releases}{Logical: Should the release sites be printed in the
 study area diagrams?}
 
-\item{plot.detections.by}{The type of y axis desired for the individual
+\item{detections.y.axis}{The type of y axis desired for the individual
 detection plots. While the argument defaults to "auto", it can be hard-set
 to one of "stations" or "arrays".}
 
