@@ -5,7 +5,7 @@ Sys.setenv(TZ = 'UTC')
 tests.home <- getwd()
 setwd(tempdir())
 
-exampleWorkspace("exampleWorkspace")
+exampleWorkspace("exampleWorkspace", force = TRUE)
 setwd("exampleWorkspace")
 
 bio <- read.csv("biometrics.csv")
@@ -29,9 +29,11 @@ Additionally, data must to be compiled during the current R session.", fixed = T
 Additionally, data must to be compiled during the current R session.", fixed = TRUE)
 })
 
-expect_warning(d <- preload(biometrics = bio, deployments = deployments, spatial = spatial, detections = detections,
-														dot = dot, tz = "Europe/Copenhagen"),
-	"No detections were found for receiver(s) 132907", fixed = TRUE)
+test_that("basic preload works as expected", {
+	expect_warning(d <<- preload(biometrics = bio, deployments = deployments, spatial = spatial, detections = detections,
+															dot = dot, tz = "Europe/Copenhagen"),
+		"No detections were found for receiver(s) 132907", fixed = TRUE)
+})
 
 test_that("checkArguments complains if preload is used together with tz", {
 	expect_warning(explore(datapack = d, tz = "Europe/Copenhagen"),
@@ -41,8 +43,10 @@ test_that("checkArguments complains if preload is used together with tz", {
 # n
 
 test_that("checkArguments stops if wrong override is provided with preload", {
-	expect_error(explore(datapack = d, override = 1234),
-		"Some tag signals listed in 'override' (1234) are not listed in the biometrics data", fixed = TRUE)
+	expect_error(
+		expect_warning(explore(datapack = d, override = 1234),
+			"Override is numeric (i.e. the code space has not been included). Will attempt to identify tags to be excluded based on signal alone.", fixed = TRUE),
+		"Some tags listed in 'override' (1234) are not listed in the biometrics data", fixed = TRUE)
 })
 
 test_that("explore with preload yields the same results as with traditional loading", {
@@ -251,6 +255,53 @@ test_that("Data conversion warnings and errors kick in", {
 			dot = dot, distances = example.distances, tz = "Europe/Copenhagen"),
 	"The detections have a column named 'Valid' but its content is not logical. Resetting to Valid = TRUE.", fixed = TRUE)
 })
+
+test_that("preload stops if user-defined section order has duplicates", {
+	expect_error(preload(biometrics = bio, deployments = deployments, spatial = spatial, detections = detections,
+					     dot = dot, tz = "Europe/Copenhagen", section.order = c("A", "A")),
+	"Some section names are duplicated in the 'section.order' argument. Please include each section only once.", fixed = TRUE)
+})
+
+
+test_that("preload can handle spatial objects with one array only", {
+	xdeployments <- deployments[deployments$Station == "Station 1", ]
+	xspatial <- spatial[c(2, 18), ]
+	xdetections <- detections[detections$Receiver == xdeployments$Receiver, ]
+	expect_warning(preload(biometrics = bio, deployments = xdeployments, spatial = xspatial, detections = xdetections, tz = "Europe/Copenhagen"),
+		regexp = NA)
+})
+
+test_that("preload does not flop on circular study areas (extreme test)", {
+	xdot <- paste0(dot, "--A0")
+	expect_warning(preload(biometrics = bio, deployments = deployments, spatial = spatial, detections = detections,
+															dot = xdot, tz = "Europe/Copenhagen"),
+		"No detections were found for receiver(s) 132907", fixed = TRUE)
+})
+
+test_that("preload does not flop if timestamps and/or codespaces are not characters", {
+	xdetections <- detections
+	xdetections$Timestamp <- as.POSIXct(xdetections$Timestamp, tz = "Europe/Copenhagen")
+	xdetections$CodeSpace <- as.factor(xdetections$CodeSpace)
+	expect_warning(preload(biometrics = bio, deployments = deployments, spatial = spatial, detections = xdetections,
+															dot = dot, tz = "Europe/Copenhagen"),
+		"No detections were found for receiver(s) 132907", fixed = TRUE)
+})
+
+test_that("preload works even if Sensor.Value/Sensor.Unit is missing", {
+	xdetections <- detections
+	xdetections$Sensor.Value <- NULL
+	expect_warning(preload(biometrics = bio, deployments = deployments, spatial = spatial, detections = xdetections,
+															dot = dot, tz = "Europe/Copenhagen"),
+		"Could not find a 'Sensor.Value' column in the detections. Filling one with NA.", fixed = TRUE)
+
+	xdetections <- detections
+	xdetections$Sensor.Unit <- NULL
+	expect_warning(preload(biometrics = bio, deployments = deployments, spatial = spatial, detections = xdetections,
+															dot = dot, tz = "Europe/Copenhagen"),
+		"Could not find a 'Sensor.Unit' column in the detections. Filling one with NA.", fixed = TRUE)
+})
+
+
 
 setwd("..")
 unlink("exampleWorkspace", recursive = TRUE)

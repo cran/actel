@@ -8,7 +8,7 @@ Sys.setenv(TZ = 'UTC')
 
 tests.home <- getwd()
 setwd(tempdir())
-exampleWorkspace("exampleWorkspace")
+exampleWorkspace("exampleWorkspace", force = TRUE)
 setwd("exampleWorkspace")
 
 xbio <- example.biometrics
@@ -45,7 +45,8 @@ names(moves) <- aux
 rm(aux)
 
 xmoves <- moves
-link <- match(bio$Transmitter[bio$Release.site == "RS2" & !is.na(bio$Transmitter)], names(xmoves))
+link <- match(bio$Transmitter[bio$Release.site == "RS2"], names(xmoves))
+link <- link[!is.na(link)]
 for (i in link) {
 	xmoves[[i]]$Valid[!grepl("A8|A9", xmoves[[i]]$Array)] <- FALSE
 }
@@ -147,7 +148,7 @@ Sys.setenv(TZ = 'UTC')
 
 tests.home <- getwd()
 setwd(tempdir())
-exampleWorkspace("exampleWorkspace")
+exampleWorkspace("exampleWorkspace", force = TRUE)
 setwd("exampleWorkspace")
 
 xbio <- example.biometrics
@@ -185,7 +186,8 @@ names(moves) <- aux
 rm(aux)
 
 xmoves <- moves
-link <- match(bio$Transmitter[bio$Release.site == "RS2" & !is.na(bio$Transmitter)], names(xmoves))
+link <- match(bio$Transmitter[bio$Release.site == "RS2"], names(xmoves))
+link <- link[!is.na(link)]
 for (i in link) {
   xmoves[[i]]$Valid[!grepl("A6|A7|A8|A9", xmoves[[i]]$Array)] <- FALSE
 }

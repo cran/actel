@@ -4,10 +4,12 @@
 \alias{exampleWorkspace}
 \title{Deploy Example Data}
 \usage{
-exampleWorkspace(dir)
+exampleWorkspace(dir, force = FALSE)
 }
 \arguments{
 \item{dir}{The name of the target directory. Will be created if not present.}
+
+\item{force}{logical. Defaults to FALSE. Prevents deploying files in a directory that already exists without explicit permission.}
 }
 \value{
 No return value, called for side effects.
@@ -18,7 +20,7 @@ Creates a ready-to-run workspace with example data.
 \examples{
 \donttest{
 # deploy a minimal dataset to try actel!
-exampleWorkspace(paste0(tempdir(), "/exampleWorkspace"))
+exampleWorkspace(paste0(tempdir(), "/exampleWorkspace_example"))
 }
 
 }

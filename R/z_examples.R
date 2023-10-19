@@ -1,27 +1,55 @@
-#' Create a Default Workspace
+#' Deprecated function.
+#' 
+#' Use blankWorkspace instead.
 #'
-#' Produces template files and folders required to run the \code{\link{explore}},
-#' \code{\link{migration}} and \code{\link{residency}} functions.
-#'
-#' @param dir The name of the target directory. Will be created if not present.
+#' @inheritParams blankWorkspace
 #'
 #' @examples
 #' \donttest{
-#' # running createWorkspace deploys template
-#' # files to a directory specified by the user
-#' createWorkspace(paste0(tempdir(), "/createWorkspace_example"))
+#' # createWorkspace is deprecated. Use blankWorkspace instead.
 #' }
 #'
 #' @return No return value, called for side effects
 #'
 #' @export
 #'
-createWorkspace <- function(dir) {
-  if (missing(dir))
-    stop("Please specify a target directory", call. = FALSE)
+createWorkspace <- function(dir, force = FALSE) { # nocov start
+  .Deprecated("blankWorkspace")
+  blankWorkspace(dir = dir, force = force)
+} # nocov end
 
-  if (!dir.exists(dir))
+#' Create a Blank Workspace
+#'
+#' Produces template files and folders required to run the \code{\link{explore}},
+#' \code{\link{migration}} and \code{\link{residency}} functions.
+#'
+#' @param dir The name of the target directory. Will be created if not present.
+#' @param force logical. Defaults to FALSE. Prevents deploying files in a directory that already exists without explicit permission.
+#'
+#' @examples
+#' \donttest{
+#' # running blankWorkspace deploys template
+#' # files to a directory specified by the user
+#' blankWorkspace(paste0(tempdir(), "/blankWorkspace_example"))
+#' }
+#'
+#' @return No return value, called for side effects
+#'
+#' @export
+#'
+blankWorkspace <- function(dir, force = FALSE) {
+  if (missing(dir))
+    stop("Please specify a target directory.", call. = FALSE)
+
+  if (!dir.exists(dir)) {
     dir.create(dir)
+  } else {
+    if (force)
+      warning("The specified directory already exists, but force = TRUE. Deploying template files. Data loss may occur.", call. = FALSE, immediate. = TRUE)
+    else
+      stop("The specified directory already exists! Stopping to avoid accidental data loss. To continue regardless, run again with force = TRUE.", call. = FALSE)
+  }
+
 
   spatial <- data.frame(
     Station.name = c("Example station1", "Example station2", "Example station3", "Example release1", "Example release2"),
@@ -52,31 +80,39 @@ createWorkspace <- function(dir) {
 
   if (!dir.exists(paste(dir, "detections", sep ="/")))
     dir.create(paste(dir, "detections", sep ="/"))
-  message(paste0("M: Workspace files created in folder '", dir,"'."))
+
+  message(paste0("M: Template files created in folder '", dir,"'."))
 }
 
 #' Deploy Example Data
 #'
 #' Creates a ready-to-run workspace with example data.
 #'
-#' @inheritParams createWorkspace
+#' @inheritParams blankWorkspace
 #'
 #' @examples
 #' \donttest{
 #' # deploy a minimal dataset to try actel!
-#' exampleWorkspace(paste0(tempdir(), "/exampleWorkspace"))
+#' exampleWorkspace(paste0(tempdir(), "/exampleWorkspace_example"))
 #' }
 #'
 #' @return No return value, called for side effects.
 #'
 #' @export
 #'
-exampleWorkspace <- function(dir) {
+exampleWorkspace <- function(dir, force = FALSE) {
   if (missing(dir))
-    stop("Please specify a target directory", call. = FALSE)
+    stop("Please specify a target directory.", call. = FALSE)
 
-  if (!dir.exists(dir))
+  if (!dir.exists(dir)) {
     dir.create(dir)
+  } else {
+    if (force)
+      warning("The specified directory already exists, but force = TRUE. Deploying example files. Data loss may occur.", call. = FALSE, immediate. = TRUE)
+    else
+      stop("The specified directory already exists! Stopping to avoid accidental data loss. To continue regardless, run again with force = TRUE.", call. = FALSE)
+  }
+
 
   write.csv(example.spatial, paste(dir, "spatial.csv", sep ="/"), row.names = FALSE)
   write.csv(example.biometrics, paste(dir, "biometrics.csv", sep ="/"), row.names = FALSE)
@@ -115,7 +151,8 @@ Once finished, explore the html report and the object 'results' for the output."
 #'
 #' @keywords internal
 #'
-"example.spatial"
+#' @name example.spatial
+NULL
 
 #' Example biometric data
 #'
@@ -135,7 +172,8 @@ Once finished, explore the html report and the object 'results' for the output."
 #'
 #' @keywords internal
 #'
-"example.biometrics"
+#' @name example.biometrics
+NULL
 
 #' Example detection data
 #'
@@ -154,7 +192,8 @@ Once finished, explore the html report and the object 'results' for the output."
 #'
 #' @keywords internal
 #'
-"example.detections"
+#' @name example.detections
+NULL
 
 #' Example deployment data
 #'
@@ -171,7 +210,8 @@ Once finished, explore the html report and the object 'results' for the output."
 #'
 #' @keywords internal
 #'
-"example.deployments"
+#' @name example.deployments
+NULL
 
 #' Example distances matrix
 #'
@@ -182,8 +222,8 @@ Once finished, explore the html report and the object 'results' for the output."
 #'
 #' @keywords internal
 #'
-"example.distances"
-
+#' @name example.distances
+NULL
 
 #' Example migration results
 #'
@@ -196,7 +236,7 @@ Once finished, explore the html report and the object 'results' for the output."
 #'
 #' @keywords internal
 #'
-"example.results"
+'example.results'
 
 #' Example residency results
 #'
@@ -207,4 +247,4 @@ Once finished, explore the html report and the object 'results' for the output."
 #'
 #' @keywords internal
 #'
-"additional.residency.results"
+'additional.residency.results'

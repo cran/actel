@@ -8,7 +8,9 @@ explore(
   tz = NULL,
   datapack = NULL,
   max.interval = 60,
-  minimum.detections = 2,
+  minimum.detections,
+  min.total.detections = 2,
+  min.per.event = 1,
   start.time = NULL,
   stop.time = NULL,
   speed.method = c("last to first", "last to last"),
@@ -28,7 +30,6 @@ explore(
   GUI = c("needed", "always", "never"),
   save.tables.locally = FALSE,
   print.releases = TRUE,
-  plot.detections.by,
   detections.y.axis = c("auto", "stations", "arrays")
 )
 }
@@ -42,10 +43,17 @@ May be used to run actel analyses based on R objects, rather than input files.}
 \item{max.interval}{The number of minutes that must pass between detections
 for a new event to be created. Defaults to 60.}
 
-\item{minimum.detections}{For tags with only one movement event, defines the
-minimum number of times a tag must have been recorded during the study
-period for it to be considered true detections and not random noise.
-Defaults to 2.}
+\item{minimum.detections}{DEPRECATED. Please use the arguments min.total.detections
+and min.per.event instead.}
+
+\item{min.total.detections}{Minimum number of times a tag must have
+been detected during the study period for the detections to be considered true
+and not just random noise. Defaults to 2.}
+
+\item{min.per.event}{Minimum number of detections an event must have to be
+deemed valid. For analyses with both array and section events, a vector of
+two values can be provided. If only one value is provided, the same threshold
+applies for both types of events. Defaults to 1.}
 
 \item{start.time}{Detection data prior to the timestamp set in
 \code{start.time} (in YYYY-MM-DD HH:MM:SS format) is not considered during
@@ -63,24 +71,24 @@ last detection on the target array to perform the calculations.}
 
 \item{speed.warning}{If a tag moves at a speed equal or greater than
 \code{speed.warning} (in metres per second), a warning is issued. If left
-NULL (default), no warnings are issued.}
+NULL (default), no warnings are issued. Must be equal to or lower than \code{speed.error}}
 
 \item{speed.error}{If a tag moves at a speed equal or greater than
 \code{speed.error} (in metres per second), user intervention is suggested.
 If left NULL (default), user intervention is never suggested.}
 
 \item{jump.warning}{If a tag crosses a number of arrays equal or greater
-than \code{jump.warning} without being detected, a warning is issued. If left
-NULL (default), no warnings are issued.}
+than \code{jump.warning} without being detected, a warning is issued. Defaults
+to 2. To disable jump warnings, set to Inf. Must be equal to or lower than \code{jump.error}.}
 
 \item{jump.error}{If a tag crosses a number of arrays equal or greater than
 \code{jump.error} without being detected, user intervention is suggested.
-If left NULL (default), user intervention is never suggested.}
+Defaults to 3. To disable user intervention suggestions, set to Inf.}
 
 \item{inactive.warning}{If a tag spends a number of days equal or greater
 than \code{inactive.warning} in a given array at the tail of the respective
 detections, a warning is issued. If left NULL (default), no warnings are
-issued.}
+issued. Must be equal to or lower than \code{innactive.error}.}
 
 \item{inactive.error}{If a tag spends a number of days equal or greater than
 \code{inactive.error} in a given array at the tail of the respective
@@ -131,8 +139,6 @@ in R's temporary folder?}
 \item{print.releases}{Logical: Should the release sites be printed in the
 study area diagrams?}
 
-\item{plot.detections.by}{DEPRECATED. Please use the argument detections.y.axis instead.}
-
 \item{detections.y.axis}{The type of y axis desired for the individual
 detection plots. While the argument defaults to "auto", it can be hard-set
 to one of "stations" or "arrays".}
@@ -167,10 +173,10 @@ old.wd <- getwd()
 setwd(tempdir())
 
 # Deploy the example workspace
-exampleWorkspace("exampleWorkspace")
+exampleWorkspace("explore_example")
 
 # Move your R session into the example workspace
-setwd("exampleWorkspace")
+setwd("explore_example")
 
 # run the explore analysis. Ensure the tz argument
 # matches the time zone of the study area. For the

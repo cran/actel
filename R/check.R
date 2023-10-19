@@ -43,11 +43,13 @@ NULL
 #'
 #' @return updated parameters
 #'
-checkArguments <- function(dp, tz, minimum.detections, max.interval, speed.method = c("last to first", "last to last"),
+checkArguments <- function(dp, tz, min.total.detections, min.per.event, max.interval, speed.method = c("last to first", "last to last"),
   speed.warning, speed.error, start.time, stop.time, report, auto.open, save.detections, jump.warning, jump.error,
   inactive.warning, inactive.error, exclude.tags, override, print.releases, detections.y.axis = c("auto", "stations", "arrays"),
-  if.last.skip.section = NULL, replicates = NULL, section.minimum = NULL, section.order = NULL, timestep = c("days", "hours")) {
+  if.last.skip.section = NULL, replicates = NULL, section.warning, section.error, section.order = NULL, timestep = c("days", "hours")) {
   appendTo("debug", "Running checkArguments.")
+
+  # Note: Checks only relevant for migration() or residency() are listed at the bottom!
 
   no.dp.args <- c("tz", "section.order", "start.time", "stop.time", "save.detections", "exclude.tags")
   link <- c(!is.null(tz), 
@@ -66,11 +68,20 @@ checkArguments <- function(dp, tz, minimum.detections, max.interval, speed.metho
   if (is.null(dp) && is.na(match(tz, OlsonNames())))
     stopAndReport("'tz' could not be recognized as a timezone. Check available timezones with OlsonNames()")
 
-  if (!is.numeric(minimum.detections))
-    stopAndReport("'minimum.detections' must be numeric.")
+  if (!is.numeric(min.total.detections))
+    stopAndReport("'min.total.detections' must be numeric.")
 
-  if (minimum.detections <= 0)
-    stopAndReport("'minimum.detections' must be positive.")
+  if (!is.numeric(min.per.event))
+    stopAndReport("'min.per.event' must be numeric.")
+
+  if (min.total.detections <= 0)
+    stopAndReport("'min.total.detections' must be positive.")
+
+  if (any(min.per.event <= 0))
+    stopAndReport("'min.per.event' must be positive.")
+
+  if (length(min.per.event) == 1)
+    min.per.event <- rep(min.per.event, 2)
 
   if (!is.numeric(max.interval))
     stopAndReport("'max.interval' must be numeric.")
@@ -134,10 +145,17 @@ checkArguments <- function(dp, tz, minimum.detections, max.interval, speed.metho
     stopAndReport("'jump.error' must not be lower than 1.")
 
   if (jump.error < jump.warning) {
-    if (jump.warning != 2) # i.e. it is not the default jump.warning
-      stopAndReport("'jump.error' must not be lower than 'jump.warning'.")
-    else
+    if (jump.warning == 2) { # this happens if someone changed jump error but didn't set jump warning.
+      appendTo(c("screen", "warning"), "Adjusting default 'jump.warning' to match set 'jump.error'.")
       jump.warning <- jump.error
+    } else {
+      if (jump.error == 3) { # this happens if someone changed jump warning but didn't change jump error.
+        appendTo(c("screen", "warning"), "Adjusting default 'jump.error' to match set 'jump.warning'.")
+        jump.error <- jump.warning
+      } else { # this happens if someone set both jump warning and jump error. In this case, stop and let the user decide.
+        stopAndReport("'jump.error' must not be lower than 'jump.warning'.")
+      }
+    }
   }
 
   if (!is.null(inactive.warning) && !is.numeric(inactive.warning))
@@ -162,10 +180,11 @@ checkArguments <- function(dp, tz, minimum.detections, max.interval, speed.metho
     inactive.error <- Inf
 
   if (is.null(dp) && !is.null(exclude.tags) && any(!grepl("-", exclude.tags, fixed = TRUE)))
-    stopAndReport("Not all contents in 'exclude.tags' could be recognized as tags (i.e. 'codespace-signal'). Valid examples: 'R64K-1234', A69-1303-1234'")
+    stopAndReport("Not all contents in 'exclude.tags' could be recognized as tags (i.e. 'codespace-signal'). Valid examples: 'R64K-1234', 'A69-1303-1234'")
 
-  if (!is.null(override) && !is.numeric(override))
-    stopAndReport("'override' must be numeric. Please include only the tag signals in the 'override' argument.")
+  if (!is.null(override) && is.numeric(override)) {
+    appendTo(c('report', 'screen', 'warning'), 'Override is numeric (i.e. the code space has not been included). Will attempt to identify tags to be excluded based on signal alone.')
+  }
 
   if (!is.logical(print.releases))
     stopAndReport("'print.releases' must be logical.")
@@ -180,9 +199,16 @@ checkArguments <- function(dp, tz, minimum.detections, max.interval, speed.metho
 
   # Check that all the overridden tags are part of the study
   if (!is.null(dp) && !is.null(override)) {
-    lowest_signals <- sapply(dp$bio$Signal, function(i) min(as.numeric(unlist(strsplit(as.character(i), "|", fixed = TRUE)))))
-    if (any(link <- is.na(match(override, lowest_signals))))
-      stopAndReport("Some tag signals listed in 'override' (", paste0(override[link], collapse = ", "), ") are not listed in the biometrics data.")
+    if (is.numeric(override)) {
+      lowest_signals <- sapply(dp$bio$Signal, lowestSignal)
+      if (any(link <- is.na(match(override, dp$bio$Signal)))) {
+        stopAndReport("Some tags listed in 'override' (", paste0(override[link], collapse = ", "), ") are not listed in the biometrics data.")
+      }
+    } else {
+      if (any(link <- is.na(match(override, dp$bio$Transmitter)))) {
+        stopAndReport("Some tags listed in 'override' (", paste0(override[link], collapse = ", "), ") are not listed in the biometrics data.")
+      }
+    }
   }
 
   # NON-explore checks
@@ -198,15 +224,45 @@ checkArguments <- function(dp, tz, minimum.detections, max.interval, speed.metho
   if (!is.null(replicates) && length(names(replicates)) != length(replicates))
     stopAndReport("All list elements within 'replicates' must be named (i.e. list(Array = 'St.1') rather than list('St.1')).")
 
-  if (!is.null(section.minimum) && !is.numeric(section.minimum))
-    stopAndReport("'section.minimum' must be numeric.")
+  # only run these in residency calls.
+  if (!missing(section.warning)) {
+    if (section.error > section.warning) {
+      if (section.warning == 1) { # this happens if someone changed section error but didn't set section warning.
+        appendTo(c("screen", "warning"), "Adjusting default 'section.warning' to match set 'section.error'.")
+        section.warning <- section.error
+      } else {
+        if (section.error == 1) { # this happens if someone changed section warning but didn't change section error.
+          appendTo(c("screen", "warning"), "Adjusting default 'section.error' to match set 'section.warning'.")
+          section.error <- section.warning
+        } else { # this happens if someone set both section warning and section error. In this case, stop and let the user decide.
+          stopAndReport("'section.error' must not be lower than 'section.warning'.")
+        }
+      }
+    }
 
-  return(list(speed.method = speed.method,
+    if (min.per.event[2] > section.error)
+      appendTo(c('screen', 'warning', 'report'), "The minimum number of detections per valid section event is higher than 'section.warning'. Section warnings will never occur.")
+
+    if (min.per.event[2] > section.error)
+      appendTo(c('screen', 'warning', 'report'), "The minimum number of detections per valid section event is higher than 'section.error'. Section errors will never occur.")
+  } else {
+    # placeholder values so that explore and migration don't crash when attempting
+    # to export below. These two variables are only used by residency.
+    section.error <- 0
+    section.warning <- 0
+  }
+
+  return(list(min.per.event = min.per.event,
+              speed.method = speed.method,
               speed.warning = speed.warning,
               speed.error = speed.error,
+              jump.warning = jump.warning,
+              jump.error = jump.error,
               inactive.warning = inactive.warning,
               inactive.error = inactive.error,
               detections.y.axis = detections.y.axis,
+              section.warning = section.warning,
+              section.error = section.error,
               timestep = timestep))
 }
 
@@ -250,38 +306,9 @@ checkGUI <- function(GUI = c("needed", "always", "never"), save.tables.locally) 
   
   GUI <- match.arg(GUI)
   
-  if (GUI != "never") {
-    aux <- c(
-      length(suppressWarnings(packageDescription("gWidgets2"))),
-      length(suppressWarnings(packageDescription("gWidgets2RGtk2"))),
-      length(suppressWarnings(packageDescription("RGtk2"))))
-    missing.packages <- sapply(aux, function(x) x == 1)
-    if (any(missing.packages)) {
-      appendTo(c("Screen", "Warning"),
-        paste0("GUI is set to '", GUI, "' but ",
-          ifelse(sum(missing.packages) == 1, "package '", "packages '"),
-          paste(c("gWidgets2", "gWidgets2RGtk2", "RGtk2")[missing.packages], collapse = "', '"),
-          ifelse(sum(missing.packages) == 1, "' is", "' are"),
-          " not available. Please install ",
-          ifelse(sum(missing.packages) == 1, "it", "them"),
-          " if you intend to run GUI.\n         Disabling GUI (i.e. GUI = 'never') for the current run."))
-      GUI <- "never"
-    } else {
-      if (.Platform$OS.type == "windows") {
-        dllpath <- Sys.getenv("RGTK2_GTK2_PATH")
-        if (!nzchar(dllpath))
-          dllpath <- file.path(file.path(system.file(package = "RGtk2"), "gtk", .Platform$r_arch), "bin")
-        dll <- try(library.dynam("RGtk2", "RGtk2", sub("/RGtk2", "", find.package("RGtk2")), DLLpath = dllpath), silent = TRUE)
-      } else {
-       dll <- try(library.dynam("RGtk2", "RGtk2", sub("/RGtk2", "", find.package("RGtk2"))), silent = TRUE)
-      }
-      if (is.character(dll)) {
-       appendTo(c("Screen", "Warning"),
-        paste0("GUI is set to '", GUI,
-        "' but loading of RGtk2 dll failed. Please run e.g. gWidgets2::gtext() to trigger the installation of RGtk2's dll and then restart R.\n         Disabling GUI (i.e. GUI = 'never') for the current run."))
-       GUI <- "never"
-      }
-    }
+  if (GUI != "never" && length(suppressWarnings(packageDescription("gWidgets2tcltk"))) == 1) {
+    appendTo(c("Screen", "Warning"), paste0("GUI is set to '", GUI, "' but package 'gWidgets2tcltk' is not available. Please install it if you intend to run GUI.\n         Disabling GUI (i.e. GUI = 'never') for the current run."))
+    GUI <- "never"
   }
 
   if (GUI == "never" & save.tables.locally & file.exists("actel_inspect_movements.csv"))
@@ -322,7 +349,7 @@ checkDupDetections <- function(input) {
   if (any(dups)) {
     appendTo(c("Screen", "Report", "Warning"), paste0(sum(dups), " duplicated detection", ifelse(sum(dups) == 1, " was", "s were"), " found. Could an input file be duplicated?"))
     message("")
-    message("Screen", "Possible options:\n   a) Stop and double-check the data\n   b) Remove duplicated detections\n   c) Continue without changes\n   d) Save duplicated detections to a file and re-open dialogue.")
+    message("Possible options:\n   a) Stop and double-check the data\n   b) Remove duplicated detections\n   c) Continue without changes\n   d) Save duplicated detections to a file and re-open dialogue.")
     message("")
     restart <- TRUE
     while (restart) {
@@ -379,7 +406,8 @@ checkDupDetections <- function(input) {
 }
 
 
-#' Check that the tag have enough detections to be valid
+#' Check the number of detections (total and per event) of a given tag. Works
+#' for both array and section movements.
 #'
 #' @inheritParams check_args
 #' @inheritParams explore
@@ -388,11 +416,16 @@ checkDupDetections <- function(input) {
 #'
 #' @keywords internal
 #'
-checkMinimumN <- function(movements, minimum.detections, tag, n) {
-  appendTo("debug", "Running checkMinimumN.")  
-  if (nrow(movements) == 1 && movements$Detections < minimum.detections) {
-    appendTo(c("Screen", "Report", "Warning"), paste0("Tag ", tag, " ", n, " only has one movement event (", movements$Array, ") with ", movements$Detections, " detections. Considered invalid."))
-    movements$Valid <- FALSE
+checkMinimumN <- function(movements, min.total.detections, min.per.event, tag, n) {
+  appendTo("debug", "Running checkMinimumN")
+  if (sum(movements$Detections) < min.total.detections) {
+    appendTo(c("screen", "report", "warning"), paste0("Tag ", tag, " ", n, " has less than ", min.total.detections," detections in total. Discarding this tag."))
+    movements$Valid <- FALSE # invalidate the tag
+  }
+  if (any(movements$Valid) & any(movements$Detections < min.per.event)) {
+    if (any(colnames(movements) == 'Array'))
+      appendTo(c("screen", "report", "warning"), paste0("Tag ", tag, " ", n, " has ", tolower(colnames(movements)[1]), " movement events with less than ", min.per.event, " detections. Invalidating those events."))
+    movements$Valid[movements$Detections < min.per.event] <- FALSE
   }
   return(movements)
 }
@@ -632,14 +665,19 @@ checkImpassables <- function(movements, tag, bio, spatial, detections, dotmat, G
 #'
 #' @keywords internal
 #'
-checkSMovesN <- function(secmoves, tag, section.minimum, GUI, save.tables.locally, n) {
+checkSMovesN <- function(secmoves, tag, section.warning, section.error, GUI, save.tables.locally, n) {
   appendTo("debug", "Running checkSMovesN.")
-  if (any(link <- secmoves$Detections < section.minimum)) {
-    appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Section movements with less than ", section.minimum, " detections are present for tag ", tag, " ", n, "."))
-    if (interactive())
-      secmoves <- tableInteraction(moves = secmoves, tag = tag, trigger = the.warning, # nocov
-                                   GUI = GUI, save.tables.locally = save.tables.locally) # nocov
+
+  if (any(secmoves$Detections <= section.warning & secmoves$Valid)) {
+    the.warning <- paste0("Section movements with ", section.warning, " or less detections are present for tag ", tag, " ", n, ".")
+    appendTo(c("Screen", "Report", "Warning"), the.warning)
   }
+
+  if (any(secmoves$Detections <= section.error & secmoves$Valid)) {
+    secmoves <- tableInteraction(moves = secmoves, tag = tag, trigger = the.warning, # nocov
+                                 GUI = GUI, save.tables.locally = save.tables.locally) # nocov
+  }
+
   return(secmoves)
 }
 
@@ -654,9 +692,12 @@ checkSMovesN <- function(secmoves, tag, section.minimum, GUI, save.tables.locall
 #'
 checkLinearity <- function(secmoves, tag, spatial, arrays, GUI, save.tables.locally, n) {
   appendTo("debug", "Running checkLinearity.")
+
+  valid.secmoves <- secmoves[secmoves$Valid, ]
+
   sections <- names(spatial$array.order)
-  back.check <- match(secmoves$Section, sections)
-  turn.check <- rev(match(sections, rev(secmoves$Section))) # captures the last event of each section. Note, the values count from the END of the events
+  back.check <- match(valid.secmoves$Section, sections)
+  turn.check <- rev(match(sections, rev(valid.secmoves$Section))) # captures the last event of each section. Note, the values count from the END of the events
   if (is.unsorted(back.check)) {
       if (is.unsorted(turn.check, na.rm = TRUE))
         appendTo(c("Screen", "Report", "Warning"), the.warning <- paste0("Inter-section backwards movements were detected for tag ", tag, " ", n, " and the last events are not ordered!"))
@@ -707,8 +748,8 @@ checkReport <- function(report){
 #'
 #' @keywords internal
 #'
-checkUpstream <- function(movements, tag, bio, detections, arrays, spatial, GUI, save.tables.locally, n) {
-  appendTo("debug", "Running checkUpstream.")
+checkFirstDetBackFromRelease <- function(movements, tag, bio, detections, arrays, spatial, GUI, save.tables.locally, n) {
+  appendTo("debug", "Running checkFirstDetBackFromRelease.")
   # NOTE: The NULL variables below are actually column names used by data.table.
   # This definition is just to prevent the package check from issuing a note due unknown variables.
   Valid <- NULL
@@ -949,16 +990,23 @@ checkDeploymentStations <- function(input, spatial) {
   aux <- spatial[spatial$Type == "Hydrophone", ]
   link <- match(unique(input$Station.name), aux$Station.name)
   if (any(is.na(link))) {
-    appendTo(c("Screen", "Report", "Warning"), paste0("", ifelse(sum(is.na(link)) > 1, "Stations", "Station"), " '", paste(unique(input$Station.name)[is.na(link)], collapse = "', '"), "' ", ifelse(sum(is.na(link)) > 1, "are", "is"), " listed in the deployments but ", ifelse(sum(is.na(link)) > 1, "are", "is"), " not part of the study's stations. Discarding deployments at unknown stations."))
+    appendTo(c("Screen", "Report", "Warning"), 
+      paste0("The following station", ifelse(sum(is.na(link)) > 1, "s are", " is"), 
+        " listed in the deployments but ",
+        ifelse(sum(is.na(link)) > 1, "are", "is"), 
+        " not part of the study's stations: '", 
+        paste(unique(input$Station.name)[is.na(link)], collapse = "', '"), 
+        "'\nDiscarding deployments at unknown stations."))
     to.remove <- match(input$Station.name, unique(input$Station.name)[is.na(link)])
     input <- input[is.na(to.remove), ]
   }
   link <- match(aux$Station.name, unique(input$Station.name))
   if (any(is.na(link))) {
-    stopAndReport(paste0(ifelse(sum(is.na(link)) > 1, "Stations '", "Station '"),
+    stopAndReport(paste0("The following station", 
+      ifelse(sum(is.na(link)) > 1, "s are", " is"),
+      " listed in the spatial file but no receivers were ever deployed there: '",
       paste(aux$Station.name[is.na(link)], collapse = "', '"),
-      ifelse(sum(is.na(link)) > 1, "' are", "' is"),
-      " listed in the spatial file but no receivers were ever deployed there.\n"))
+      "'\n"))
   }
   input$Standard.name <- aux$Standard.name[match(input$Station.name, aux$Station.name)]
   input$Array <- aux$Array[match(input$Station.name, aux$Station.name)]
@@ -1194,11 +1242,11 @@ checkDetectionsBeforeRelease <- function(input, bio, discard.orphans = FALSE){
           }
         }
         if (all(to.remove)) {
-          appendTo(c("Screen", "Report"), paste0("ALL detections from tag ", names(input)[link[i]], " were removed per user command."))
+          appendTo(c("Screen", "Report"), paste0("M: ALL detections from tag ", names(input)[link[i]], " removed per user command."))
           remove.tag <- c(remove.tag, link[i])
         } else {
           input[[link[i]]] <- input[[link[i]]][!to.remove, ]
-          appendTo(c("Screen", "Report"), paste0("M: ", sum(to.remove), " detections from tag ", names(input)[link[i]], " were removed per user command."))
+          appendTo(c("Screen", "Report"), paste0("M: ", sum(to.remove), " detection(s) from tag ", names(input)[link[i]], " removed per user command."))
         }
       }
     }
@@ -1220,9 +1268,11 @@ checkDetectionsBeforeRelease <- function(input, bio, discard.orphans = FALSE){
 #'
 checkNoDetections <- function(input, bio){
   appendTo("debug", "Running checkNoDetections.")
-  tag.list <- extractSignals(names(input))
-  signal_check <- suppressWarnings(as.numeric(unlist(strsplit(as.character(bio$Signal), "|", fixed = TRUE))))
-  link <- match(signal_check, tag.list)
+  if ('Code.space' %in% colnames(bio))
+    link <- match(paste0(bio$Code.space, '-', lowestSignal(bio$Signal)), names(input))
+  else
+    link <- match(lowestSignal(bio$Signal), extractSignals(names(input)))
+
   if (all(is.na(link)))
     stopAndReport("No detections were found in the input data which matched the target signals.\n")
 }
@@ -1230,8 +1280,7 @@ checkNoDetections <- function(input, bio){
 #' Check if there are duplicated signals in the detected tags.
 #'
 #' @param input list of detections
-#' @param tag.list list of the target signals
-#' @inheritParams check_args
+#' @param bio the biometrics table
 #'
 #' @return No return value, called for side effects.
 #'
@@ -1239,24 +1288,101 @@ checkNoDetections <- function(input, bio){
 #'
 checkDupSignals <- function(input, bio){
   appendTo("debug", "Running checkDupSignals.")
-  tag.list <- extractSignals(names(input))
-  signal_check <- suppressWarnings(as.numeric(unlist(strsplit(as.character(bio$Signal), "|", fixed = TRUE))))
-  failsafe <- match(tag.list, signal_check)
-  if (any(table(failsafe) > 1)) {
-    t1 <- cbind(names(input), signal_check[failsafe])
-    t2 <- t1[complete.cases(t1), ]
-    t3 <- table(t2[, 1], t2[, 2])
-    rm(t1, t2)
-    dupsig <- data.frame(Signal = colnames(t3)[apply(t3, 2, sum) > 1], Tags = NA, stringsAsFactors = FALSE)
-    for (i in seq_len(nrow(dupsig))) {
-      dupsig$Tags[i] <- paste(row.names(t3)[t3[, dupsig$Signal[i]] == 1], collapse = ", ")
+  
+  if (any(colnames(bio) == "Code.space")) {
+    appendTo('debug', 'Debug: Skipping checkDupSignals as there is a codespace column')
+  }
+  else {  
+    signals <- extractSignals(names(input))
+    expected <- suppressWarnings(as.numeric(unlist(strsplit(as.character(bio$Signal), "|", fixed = TRUE))))
+    to.check <- match(signals, expected)
+    if (any(table(to.check) > 1)) {
+        bind_list_with_expected <- cbind(names(input), expected[to.check])
+        remove_non_detected <- bind_list_with_expected[complete.cases(bind_list_with_expected), ]
+        table_the_signals <- table(remove_non_detected[, 1], remove_non_detected[, 2])
+
+        dupsig <- data.frame(Signal = colnames(table_the_signals)[apply(table_the_signals, 
+            2, sum) > 1], Tags = NA, stringsAsFactors = FALSE)
+        for (i in seq_len(nrow(dupsig))) {
+            dupsig$Tags[i] <- paste(row.names(table_the_signals)[table_the_signals[, dupsig$Signal[i]] == 1], collapse = ", ")
+        }
+
+        rest.of.message <- NULL
+        for (i in seq_len(nrow(dupsig))) {
+            rest.of.message <- paste0(rest.of.message, "\n   Signal ", 
+                                      dupsig$Signal[i], " was found on tags ", 
+                                      dupsig$Tags[i], ".")
+        }
+
+        stopAndReport("One or more signals match more than one tag in the detections! Showing relevant signals/tags.", 
+            rest.of.message)
     }
-    rm(t3)
-    rest.of.message <- NULL
-    for (i in seq_len(nrow(dupsig))) {
-      rest.of.message <- paste0(rest.of.message, "\n   Signal ", dupsig$Signal[i], " was found on tags ", dupsig$Tags[i], ".")
-    }
-    stopAndReport("One or more signals match more than one tag in the detections! Showing relevant signals/tags.", rest.of.message)
   }
 }
 
+#' warn users if they are about to run into an unfixed bug.
+#' 
+#' @return No return value, called for side effects.
+#'
+#' @keywords internal
+#'
+checkIssue79 <- function(arrays, spatial) {
+
+  output <- lapply(names(arrays), function(i) {
+    link <- match(i, spatial$stations$Array)
+    this.section <- as.character(unique(spatial$stations$Section[link]))
+
+    link <- match(arrays[[i]]$before, spatial$stations$Array)
+    before <- as.character(unique(spatial$stations$Section[link]))
+
+    if (length(before) > 0) {
+      before <- data.frame(
+        Section = this.section,
+        Neighbour = before,
+        type = "Before")
+    } else {
+      before <- NULL
+    }
+
+    link <- match(arrays[[i]]$after, spatial$stations$Array)
+    after <- as.character(unique(spatial$stations$Section[link]))
+
+    if (length(after) > 0) {
+      after <- data.frame(
+        Section = this.section,
+        Neighbour = after,
+        type = "After")
+    } else {
+      after <- NULL
+    }
+    
+    return(rbind(before, after))
+  })
+
+  x <- do.call(rbind, output)
+  x <- x[apply(x, 1, function(i) i[1] != i[2]), ]
+  x$tmp <- paste(x[,1], x[,2], x[,3])
+  x[!duplicated(x$tmp), ]
+  x$tmp <- NULL
+
+  link <- aggregate(x$type, list(x$Section), function(i) any(duplicated(i)))$x
+
+  if (any(link)) {
+    if (getOption("actel.bypass_issue_79", default = FALSE)) {
+        appendTo(c("Screen", "warning", "report"), "This study area seems to trigger issue 79. However, you have activated the bypass, so the analysis will continue.")     
+    } else {
+stopAndReport(
+"READ CAREFULLY
+
+It seems your study area contains parallel sections. actel is currently incapable of comprehending parallel sections during migration. This bug (issue 79) was brought to light in version 1.2.1, but a fix has not been found yet. This bug is easy to circumvent: you must make sure that the study area sections are sequential. Otherwise, the survival values per section could become compromised. If you wish to read more about this issue (when it appears, what it causes, and how to avoid it), please visit https://hugomflavio.github.io/actel-website/issue_79.html
+
+If you really want to run your analysis as is, or if you think this error came up unnecessarily, you can force the analysis by running the following command and restarting the analysis:
+
+options(actel.bypass_issue_79 = TRUE)
+
+If this issue impacts you and you want to help me fix it, feel free to reach out.
+
+")
+    }
+  }
+}

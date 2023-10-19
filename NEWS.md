@@ -2,6 +2,44 @@
 
 Find out the main highlights of each update.
 
+## actel 1.3.0
+
+Fixes:
+  * Fix `printLastSection()` crash for very large datasets.
+  * Fix `printCircular()` crash if there are six or more groups but only one is present at the array.
+  * Fix actel missing some efficiency peers as per issue [#72](https://github.com/hugomflavio/actel/issues/72).
+  * Fix comments not being appended to status.df in the `residency()` analysis.
+  * Fix minor bug where comments could not be saved after interacting with the graphical interface.
+  * Prevent crash in `migration()` if an array has 0 efficiency and there are no arrays coming before it.
+  * Prevent crash if the dot file/string line breaks are coded as `\r\n`.
+  * Prevent crash while printing circular plots for the reports on Macs where the svg engines are not working.
+  * Prevent crash in `residency()` if one group has no valid detections at all.
+  * Fix bug in `plotRatios()` brought up in issue [#77](https://github.com/hugomflavio/actel/issues/77) which would occur when the user specified a section for which not all groups were detected.
+  * Prevent crashes in `residency()` when the data has an unusually high percentage of exact-time detections (e.g. midnight).
+  * Prevent crash if only some tags have multiple sensors and Sensor.unit is only included for those tags.
+  * Prevent crash if the study area/population is so large that it clashes with ggplot's size limit failsafes.
+  * Fix message overflow reported in issue [#78](https://github.com/hugomflavio/actel/issues/78).
+
+Changes:
+  * Changed the inner mechanics of the graphical widgets from RGtk2 to tcltk, as RGtk2 is now gone from CRAN. Should not affect user experience.
+  * Renamed `createWorkspace()` to `blankWorkspace()` following cases of confusion regarding function purpose. Closes [#80](https://github.com/hugomflavio/actel/issues/80)
+  * Removed dependency from package RGDAL; updated distance calculations code accordingly.
+  * Moved package vignettes to https://hugomflavio.github.io/actel-website/index.html.
+  * Removed deprecated argument `plot.detections.by`.
+  * `minimum.detections` has been replaced by `min.total.detections` and `min.per.event`.
+  * `section.minimum` has been replaced by `section.warning` and `section.error`.
+
+Enhancements:
+  * Improve handling of manually set `section.warning` and `section.error` arguments when the set values don't respect the `section.warning >= section.error` rule.
+  * Implement area-based scales for circular plots. To obtain reports with the legacy linear circular scale, users can still run `options(actel.circular.scale = "linear")` before running analyses. `plotTimes()` received a new argument `circular.scale`.
+  * Improve handling of manually set `jump.warning` and `jump.error` arguments when the set values don't respect the `jump.warning <= jump.error` rule.
+  * Change the behaviour of `recoverLog()` so it attempts to save the log to `actel_job_log.txt` if a `file` argument is not provided.
+  * Added new `force` argument to `blankWorkspace()` and `exampleWorkspace()`.
+  * New `Code.space` column in the biometrics allows the user to specify the code space of the target tags.
+  * New arguments in `plotArray()`: `by.group` and `y.style`. See function documentation for more details.
+  * Include `preload()` log in reports where preloaded data is used.
+  * `plotRatios()` can now subset multiple groups and sections simultaneously. The user can also decide to either colour the plot by group or by section using the new `col.by` argument (issue [#77](https://github.com/hugomflavio/actel/issues/77))).
+
 ## actel 1.2.1
 
 Fixes:
@@ -11,12 +49,13 @@ Fixes:
   * Fix bad formatting of the summary section in reports produced in Linux OS's.
 
 Changes:
-  * The argument `plot.detections.by` in functions explore, migration and residency has been renamed to `detections.y.axis`.
-  * The argument `type` in the function plotDetections has been renamed to `y.axis`.
+  * The argument `plot.detections.by` in functions explore(), migration() and residency() has been renamed to `detections.y.axis`.
+  * The argument `type` in the function plotDetections() has been renamed to `y.axis`.
 
 Enhancements:
   * Verify that deployments do not end before they start.
   * Improve verification of station and array names, to avoid troublesome characters slipping through and potentially crashing the analyses.
+  * The function plotDetections() has been expanded with the following arguments: `section.alias`, `x.label.format`, `only.valid` and `like.migration`.
 
 
 ## actel 1.2.0

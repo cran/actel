@@ -28,7 +28,7 @@ NULL
 groupMovements <- function(detections.list, bio, spatial, speed.method, max.interval, tz, dist.mat) {
   appendTo("debug", "Running groupMovements.")
   trigger.unknown <- FALSE
-  round.points <- roundDown(seq(from = length(detections.list)/10, to = length(detections.list), length.out = 10), to = 1)
+  round.points <- floor(seq(from = length(detections.list)/10, to = length(detections.list), length.out = 10))
   counter <- 1
   {
     if (interactive())
@@ -269,6 +269,8 @@ movementTimes <- function(movements, type = c("array", "section")){
 speedReleaseToFirst <- function(tag, bio, movements, dist.mat, speed.method){
   appendTo("debug", "Running speedReleaseToFirst.")
   the.row <- match(tag, bio$Transmitter)
+  if (is.na(the.row) | length(the.row) != 1)
+    stopAndReport('This error should never happen. Contact the developer. [tag not in bio$Transmitter, or match is not unique]')
   origin.time <- bio[the.row, "Release.date"]
   origin.place <- as.character(bio[the.row, "Release.site"])
   if (origin.time <= movements$First.time[1]) {
@@ -317,7 +319,7 @@ sectionMovements <- function(movements, spatial, valid.dist) {
   else
     return(NULL)
 
-
+  # determine section of each array movement
   aux <- lapply(seq_along(spatial$array.order), function(i) {
     arrays <- spatial$array.order[[i]]
     x <- rep(NA_character_, nrow(vm))
@@ -325,7 +327,10 @@ sectionMovements <- function(movements, spatial, valid.dist) {
     return(x)
   })
 
+  # combine object above into single vector
   event.index <- combine(aux)
+  
+  # determine in which array movements the tag changed section
   aux <- rle(event.index)
   last.events <- cumsum(aux$lengths)
   first.events <- c(1, last.events[-length(last.events)] + 1)

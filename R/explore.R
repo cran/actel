@@ -35,25 +35,29 @@
 #' @param inactive.warning If a tag spends a number of days equal or greater
 #'  than \code{inactive.warning} in a given array at the tail of the respective
 #'  detections, a warning is issued. If left NULL (default), no warnings are
-#'  issued.
+#'  issued. Must be equal to or lower than \code{innactive.error}.
 #' @param jump.error If a tag crosses a number of arrays equal or greater than
 #'  \code{jump.error} without being detected, user intervention is suggested.
-#'  If left NULL (default), user intervention is never suggested.
+#'  Defaults to 3. To disable user intervention suggestions, set to Inf.
 #' @param jump.warning If a tag crosses a number of arrays equal or greater
-#'  than \code{jump.warning} without being detected, a warning is issued. If left
-#'  NULL (default), no warnings are issued.
+#'  than \code{jump.warning} without being detected, a warning is issued. Defaults
+#'  to 2. To disable jump warnings, set to Inf. Must be equal to or lower than \code{jump.error}.
 #' @param max.interval The number of minutes that must pass between detections
 #'  for a new event to be created. Defaults to 60.
-#' @param minimum.detections For tags with only one movement event, defines the
-#'  minimum number of times a tag must have been recorded during the study
-#'  period for it to be considered true detections and not random noise.
-#'  Defaults to 2.
+#' @param minimum.detections DEPRECATED. Please use the arguments min.total.detections
+#'  and min.per.event instead.
+#' @param min.total.detections Minimum number of times a tag must have
+#'  been detected during the study period for the detections to be considered true
+#'  and not just random noise. Defaults to 2.
+#' @param min.per.event Minimum number of detections an event must have to be
+#'  deemed valid. For analyses with both array and section events, a vector of
+#'  two values can be provided. If only one value is provided, the same threshold
+#'  applies for both types of events. Defaults to 1.
 #' @param override A vector of signals for which the user intends to manually
 #'  define which movement events are valid and invalid.
 #' @param detections.y.axis The type of y axis desired for the individual
 #'  detection plots. While the argument defaults to "auto", it can be hard-set 
 #'  to one of "stations" or "arrays".
-#' @param plot.detections.by DEPRECATED. Please use the argument detections.y.axis instead.
 #' @param print.releases Logical: Should the release sites be printed in the
 #'  study area diagrams?
 #' @param report Logical. Should an HTML report be created at the end of the
@@ -75,7 +79,7 @@
 #'  last detection on the target array to perform the calculations.
 #' @param speed.warning If a tag moves at a speed equal or greater than
 #'  \code{speed.warning} (in metres per second), a warning is issued. If left
-#'  NULL (default), no warnings are issued.
+#'  NULL (default), no warnings are issued. Must be equal to or lower than \code{speed.error}
 #' @param start.time Detection data prior to the timestamp set in
 #'  \code{start.time} (in YYYY-MM-DD HH:MM:SS format) is not considered during
 #'  the analysis.
@@ -92,10 +96,10 @@
 #' setwd(tempdir())
 #'
 #' # Deploy the example workspace
-#' exampleWorkspace("exampleWorkspace")
+#' exampleWorkspace("explore_example")
 #'
 #' # Move your R session into the example workspace
-#' setwd("exampleWorkspace")
+#' setwd("explore_example")
 #'
 #' # run the explore analysis. Ensure the tz argument
 #' # matches the time zone of the study area. For the
@@ -133,7 +137,9 @@ explore <- function(
   tz = NULL,
   datapack = NULL,
   max.interval = 60,
-  minimum.detections = 2,
+  minimum.detections,
+  min.total.detections = 2,
+  min.per.event = 1,
   start.time = NULL,
   stop.time = NULL,
   speed.method = c("last to first", "last to last"),
@@ -153,13 +159,12 @@ explore <- function(
   GUI = c("needed", "always", "never"),
   save.tables.locally = FALSE,
   print.releases = TRUE,
-  plot.detections.by,
   detections.y.axis = c("auto", "stations", "arrays")) 
 {
 
 # check deprecated argument
-  if (!missing(plot.detections.by))
-    stop("'plot.detections.by' has been deprecated. Please use 'detections.y.axis' instead.", call. = FALSE)
+  if (!missing(minimum.detections))
+    stop("'minimum.detections' has been deprecated. Please use 'min.total.detections' and 'min.per.event' instead.", call. = FALSE)
 
 # clean up any lost helpers
   deleteHelpers()
@@ -181,9 +186,14 @@ explore <- function(
     checkToken(token = attributes(datapack)$actel.token,
                timestamp = attributes(datapack)$timestamp)
 
+  if (length(min.per.event) > 1) 
+    appendTo(c('screen', 'warning', 'report'),
+      'explore() only has array movements but two values were set for min.per.event. Disregarding second value.')
+  
   aux <- checkArguments(dp = datapack,
                         tz = tz,
-                        minimum.detections = minimum.detections,
+                        min.total.detections = min.total.detections,
+                        min.per.event = min.per.event,
                         max.interval = max.interval,
                         speed.method = speed.method,
                         speed.warning = speed.warning,
@@ -201,10 +211,13 @@ explore <- function(
                         override = override,
                         print.releases = print.releases,
                         detections.y.axis = detections.y.axis)
-  
+
+  min.per.event <- aux$min.per.event[1]
   speed.method <- aux$speed.method
   speed.warning <- aux$speed.warning
   speed.error <- aux$speed.error
+  jump.warning <- aux$jump.warning
+  jump.error <- aux$jump.error
   inactive.warning <- aux$inactive.warning
   inactive.error <- aux$inactive.error
   detections.y.axis <- aux$detections.y.axis
@@ -217,7 +230,8 @@ explore <- function(
   the.function.call <- paste0("explore(tz = ", ifelse(is.null(tz), "NULL", paste0("'", tz, "'")),
     ", datapack = ", ifelse(is.null(datapack), "NULL", deparse(substitute(datapack))),
     ", max.interval = ", max.interval,
-    ", minimum.detections = ", minimum.detections,
+    ", min.total.detections = ", min.total.detections,
+    ", min.per.event = ", min.per.event,
     ", start.time = ", ifelse(is.null(start.time), "NULL", paste0("'", start.time, "'")),
     ", stop.time = ", ifelse(is.null(stop.time), "NULL", paste0("'", stop.time, "'")),
     ", speed.method = ", paste0("c('", speed.method, "')"),
@@ -288,14 +302,16 @@ explore <- function(
 # -------------------------------------
 
 # Process the data
-
+  # exclude head of detections, if requested
   if (!is.null(discard.first) && discard.first > 0)
     detections.list <- discardFirst(input = detections.list, bio, trim = discard.first)
 
+  # group detections into array movements
   appendTo(c("Screen", "Report"), "M: Creating movement records for the valid tags.")
   movements <- groupMovements(detections.list = detections.list, bio = bio, spatial = spatial,
     speed.method = speed.method, max.interval = max.interval, tz = tz, dist.mat = dist.mat)
 
+  # calculate time/speed sinse release
   if (is.null(discard.first)) {
     aux <- names(movements)
     movements <- lapply(names(movements), function(tag) {
@@ -329,23 +345,35 @@ explore <- function(
     do.checkInactiveness <- TRUE
   }
 
-  movement.names <- names(movements)
+  movement.names <- names(movements) # this will be used further down to reinstate the names in the movements list.
 
-  if (any(link <- !override %in% extractSignals(movement.names))) {
+  # clean override based on movements
+  if (is.numeric(override))
+    trigger_override_warning <- any(link <- !override %in% extractSignals(movement.names))
+  else
+    trigger_override_warning <- any(link <- !override %in% movement.names)
+
+  if (trigger_override_warning) {
     appendTo(c("Screen", "Warning", "Report"), paste0("Override has been triggered for ",
       ifelse(sum(link) == 1, "tag ", "tags "), paste(override[link], collapse = ", "), " but ",
       ifelse(sum(link) == 1, "this signal was", "these signals were"), " not detected."))
     override <- override[!link]
   }
 
+  # convert numeric override to full tag override to prevent problems downstream
+  if (is.numeric(override))
+    override <- movement.names[match(override, extractSignals(movement.names))]
+
+  # Check movement quality
   movements <- lapply(seq_along(movements), function(i) {
     tag <- names(movements)[i]
     counter <- paste0("(", i, "/", length(movements), ")")
 
     appendTo("debug", paste0("debug: Checking movement quality for tag ", tag,"."))
 
-    if (is.na(match(extractSignals(tag), override))) {
-      output <- checkMinimumN(movements = movements[[tag]], tag = tag, minimum.detections = minimum.detections, n = counter)
+    if (is.na(match(tag, override))) {
+      output <- checkMinimumN(movements = movements[[tag]], tag = tag, min.total.detections = min.total.detections,
+                               min.per.event = min.per.event[1], n = counter)
 
       output <- checkImpassables(movements = output, tag = tag, bio = bio, detections = detections.list[[tag]], n = counter, 
                                  spatial = spatial, dotmat = dotmat, GUI = GUI, save.tables.locally = save.tables.locally)
@@ -449,8 +477,10 @@ explore <- function(
 # ------------
 
 # Print graphics
+  trigger.report.error.message <- TRUE
   if (report) {
     appendTo(c("Screen", "Report"), "M: Producing the report.")
+    on.exit({if (trigger.report.error.message) message("M: Producing the report failed. If you have saved a copy of the results, you can reload them using dataToList().")}, add = TRUE)
 
     if (dir.exists(paste0(tempdir(), "/actel_report_auxiliary_files")))
       unlink(paste0(tempdir(), "/actel_report_auxiliary_files"), recursive = TRUE)
@@ -486,11 +516,10 @@ explore <- function(
     }
   }
 
-  appendTo("Report", "M: Process finished successfully.")
 # ---------------
 
 # wrap up the txt report
-  appendTo("Report", "\n-------------------")
+  appendTo("Report", "M: Analysis completed!\n\n-------------------")
 
   if (file.exists(paste(tempdir(), "temp_comments.txt", sep = "/")))
     appendTo("Report", paste0("User comments:\n-------------------\n", gsub("\t", ": ", gsub("\r", "", readr::read_file(paste(tempdir(), "temp_comments.txt", sep = "/")))), "-------------------")) # nocov
@@ -498,13 +527,14 @@ explore <- function(
   if (file.exists(paste(tempdir(), "temp_UD.txt", sep = "/")))
     appendTo("Report", paste0("User interventions:\n-------------------\n", gsub("\r", "", readr::read_file(paste(tempdir(), "temp_UD.txt", sep = "/"))), "-------------------")) # nocov
 
-  appendTo("Report", paste0("Function call:\n-------------------\n", the.function.call, "\n-------------------"))
+  if (!is.null(datapack))
+    appendTo("Report", paste0("Preload function call:\n-------------------\n", attributes(datapack)$function_call, "\n-------------------"))
+
+  appendTo("Report", paste0("Explore function call:\n-------------------\n", the.function.call, "\n-------------------"))
 # ------------------
 
 # print html report
-  trigger.report.error.message <- TRUE
   if (report) {
-    on.exit({if (trigger.report.error.message) message("M: Producing the report failed. If you have saved a copy of the results, you can reload them using dataToList().")}, add = TRUE)
     if (file.exists(reportname <- "actel_explore_report.html")) {
       continue <- TRUE
       index <- 1
@@ -560,10 +590,6 @@ explore <- function(
     file.copy(paste(tempdir(), "temp_log.txt", sep = "/"), jobname)
   } # nocov end
 
-  appendTo("Screen", "M: Process finished successfully.")
-
-  finished.unexpectedly <- FALSE
-
   output <- list(bio = bio,
                  detections = detections, 
                  valid.detections = valid.detections, 
@@ -577,6 +603,9 @@ explore <- function(
 
   if (attributes(dist.mat)$valid)
     output$dist.mat <- dist.mat
+
+  appendTo("Screen", "M: Analysis completed!")
+  finished.unexpectedly <- FALSE
 
   return(output)
 }
@@ -592,7 +621,7 @@ explore <- function(
 #' @param circular.plots Rmarkdown string specifying the name of the circular plots.
 #' @param sensor.plots Rmarkdown string specifying the name of the sensor plots.
 #' @param detections All the detections used in the study
-#' @param valid.detectiosn The valid detections used in the study
+#' @param valid.detections The valid detections used in the study
 #' @inheritParams loadDetections
 #'
 #' @return No return value, called for side effects.
@@ -721,6 +750,7 @@ Note:
   : Coloured lines on the outer circle indicate the mean value for each group and the respective ranges show the standard error of the mean. Each group\'s bars sum to 100%. The number of data points in each group is presented between brackets in the legend of each pannel.
   : You can replicate these graphics and edit them as needed using the `plotTimes()` function.
   : The data used in these graphics is stored in the `times` object.
+  : To obtain reports with the legacy linear circular scale, run `options(actel.circular.scale = "linear")` before running your analyses.
 
 <center>
 ', circular.plots,'

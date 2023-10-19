@@ -27,6 +27,8 @@ gg_colour_hue <- function(n) {
 #' @keywords internal
 #'
 printProgression <- function(dot, overall.CJS, spatial, status.df, print.releases) {
+  appendTo("debug", "Starting printProgression")
+
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
   names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
 
@@ -175,6 +177,7 @@ printProgression <- function(dot, overall.CJS, spatial, status.df, print.release
      grDevices::dev.off()
     }
   }
+  appendTo("debug", "Finished printProgression")
 }
 
 #' Print DOT diagram
@@ -193,6 +196,8 @@ printDot <- function(dot, spatial, print.releases) {
 # DiagrammeR
 # DiagrammeRsvg
 # rsvg
+  appendTo("debug", "Starting printProgression")
+
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
   names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
 
@@ -325,6 +330,7 @@ printDot <- function(dot, spatial, print.releases) {
       grDevices::dev.off()
     }
   }
+  appendTo("debug", "Finished printProgression")
 }
 
 #' Print biometric graphics
@@ -342,7 +348,7 @@ printBiometrics <- function(bio) {
   # This definition is just to prevent the package check from issuing a note due unknown variables.
   Group <- NULL
 
-  appendTo("debug", "Starting printBiometrics.")
+  appendTo("debug", "Starting printBiometrics")
   biometric.fragment <- ""
   if (any(C <- grepl("Length", colnames(bio)) | grepl("Weight", colnames(bio)) | grepl("Mass", colnames(bio)) | grepl("Size", colnames(bio)))) {
     graphic.width <- 0.45
@@ -365,7 +371,7 @@ printBiometrics <- function(bio) {
       counter <- counter + 1
     }
   }
-  appendTo("debug", "Terminating printBiometrics.")
+  appendTo("debug", "Finished printBiometrics")
   return(biometric.fragment)
 }
 
@@ -386,7 +392,7 @@ printDotplots <- function(status.df, valid.dist) {
   value <- NULL
   Transmitter <- NULL
 
-  appendTo("debug", "Starting printDotplots.")
+  appendTo("debug", "Starting printDotplots")
   t1 <- status.df[status.df$Valid.detections > 0, c("Transmitter", "Valid.detections", colnames(status.df)[grepl("Average.time.until", colnames(status.df)) | grepl("Average.speed.to", colnames(status.df)) | grepl("Total.time.in",
     colnames(status.df))])]
   t1 <- t1[, apply(t1, 2, function(x) !all(is.na(x)))]
@@ -431,8 +437,8 @@ printDotplots <- function(status.df, valid.dist) {
   p <- p + ggplot2::facet_grid(. ~ variable, scales = "free_x")
   p <- p + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust = 1))
   p <- p + ggplot2::labs(x = "", y = "")
-  ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/dotplots.png"), width = 6, height = (1.3 + 0.115 * (nrow(t2) - 1)))
-  appendTo("debug", "Terminating printDotplots.")
+  ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/dotplots.png"), width = 6, height = (1.3 + 0.115 * (nrow(t2) - 1)), limitsize = FALSE)
+  appendTo("debug", "Finished printDotplots")
 }
 
 #' Print survival graphic
@@ -446,7 +452,7 @@ printDotplots <- function(status.df, valid.dist) {
 #' @keywords internal
 #'
 printSurvivalGraphic <- function(section.overview) {
-  appendTo("debug", "Starting printSurvivalGraphic.")
+  appendTo("debug", "Starting printSurvivalGraphic")
   section <- NULL
   value <- NULL
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
@@ -483,8 +489,8 @@ printSurvivalGraphic <- function(section.overview) {
   p <- p + ggplot2::scale_y_continuous(limits = c(0, 1), expand = c(0, 0, 0.05, 0))
   p <- p + ggplot2::labs(x = "", y = "Survival")
   the.width <- max(2, sum(grepl("Disap.", colnames(section.overview))) * nrow(section.overview))
-  ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/survival.png"), width = the.width, height = 4)
-  appendTo("debug", "Terminating printSurvivalGraphic.")
+  ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/survival.png"), width = the.width, height = 4, limitsize = FALSE)
+  appendTo("debug", "Finished printSurvivalGraphic")
 }
 
 
@@ -497,6 +503,7 @@ printSurvivalGraphic <- function(section.overview) {
 #' @keywords internal
 #'
 printArrayOverview <- function(array.overview) {
+  appendTo("debug", "Starting printArrayOverview")
   oldoptions <- options(knitr.kable.NA = "-")
   on.exit(options(oldoptions), add = TRUE)
   array.overview.fragment <- c("")
@@ -507,6 +514,7 @@ printArrayOverview <- function(array.overview) {
 
 ', paste(knitr::kable(array.overview[[i]]), collapse = "\n"), '\n')
   }
+  appendTo("debug", "Finished printArrayOverview")
   return(array.overview.fragment)
 }
 
@@ -524,6 +532,7 @@ printArrayOverview <- function(array.overview) {
 #' @keywords internal
 #'
 printEfficiency <- function(CJS = NULL, efficiency = NULL, intra.CJS, type = c("migration", "residency")){
+  appendTo("debug", "Starting printEfficiency")
   oldoptions <- options(knitr.kable.NA = "-")
   on.exit(options(oldoptions), add = TRUE)
   type <- match.arg(type)
@@ -612,6 +621,7 @@ knitr::kable(intra.array.CJS[[',i ,']]$absolutes)
 *Estimated efficiency:* ', round(intra.CJS[[i]]$combined.efficiency * 100, 2), "%\n")
     }
   }
+  appendTo("debug", "Finished printEfficiency")
   return(efficiency.fragment)
 }
 
@@ -632,6 +642,9 @@ knitr::kable(intra.array.CJS[[',i ,']]$absolutes)
 #'
 printIndividuals <- function(detections.list, movements, valid.movements, spatial, 
   status.df = NULL, rsp.info, y.axis = c("auto", "stations", "arrays"), extension = "png") {
+
+  appendTo("debug", "Starting printIndividuals")
+
   # NOTE: The NULL variables below are actually column names used by ggplot.
   # This definition is just to prevent the package check from issuing a note due unknown variables.
   Timestamp <- NULL
@@ -704,7 +717,7 @@ printIndividuals <- function(detections.list, movements, valid.movements, spatia
       }
     }
     # Save
-    ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/", tag, ".", extension), width = the.width, height = the.height)  # better to save in png to avoid point overlapping issues
+    ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/", tag, ".", extension), width = the.width, height = the.height, limitsize = FALSE)  # better to save in png to avoid point overlapping issues
 
     if (counter %% 2 == 0) {
       individual.plots <<- paste0(individual.plots, "![](", tempdir(), "/actel_report_auxiliary_files/", tag, ".", extension, "){ width=", the.width * 10, "% }\n")
@@ -712,10 +725,13 @@ printIndividuals <- function(detections.list, movements, valid.movements, spatia
       individual.plots <<- paste0(individual.plots, "![](", tempdir(), "/actel_report_auxiliary_files/", tag, ".", extension, "){ width=", the.width * 10, "% }")
     }
     if (interactive())
-      setTxtProgressBar(pb, counter)
+      setTxtProgressBar(pb, counter) # nocov
   })
   if (interactive())
-    close(pb)
+    close(pb) # nocov
+
+  appendTo("debug", "Finished printIndividuals")
+
   return(individual.plots)
 }
 
@@ -733,8 +749,23 @@ printIndividuals <- function(detections.list, movements, valid.movements, spatia
 #' @return A string of file locations in rmd syntax, to be included in printRmd
 #'
 printCircular <- function(times, bio, suffix = NULL){
+  appendTo("debug", "Starting printCircular")
+
   cbPalette <- c("#56B4E9", "#c0ff3e", "#E69F00", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
   circular.plots <- ""
+
+  circular.scale <- getOption("actel.circular.scale", default = "area")
+
+  if (!(circular.scale %in% c("area", "linear"))) {
+    appendTo(c("Screen", "Warning"), "Option actel.circular.scale was set but value is not recognized (accepted values: 'area', 'linear'). Defaulting back to 'area'.")
+    radii.scale <- "sqrt"
+  } else {
+    if (circular.scale == "area") {
+      radii.scale <- "sqrt"
+    } else {
+      radii.scale <- "linear"
+    }
+  }
 
   work.path <- paste0(tempdir(), "/actel_report_auxiliary_files/")
 
@@ -778,51 +809,55 @@ printCircular <- function(times, bio, suffix = NULL){
       ylegend <- -1.15
       xlegend <- 0
       xjust <- 0.5
+      number.of.columns <- 1
       if (length(colours.to.use) > 2)
-        ncol <- 2
+        number.of.columns <- 2
       if (length(colours.to.use) > 6)
-        ncol <- 3
+        number.of.columns <- 3
       if (length(colours.to.use) > 9 & !any(nchar(names(colours.to.use)) > 9))
-        ncol <- 4
+        number.of.columns <- 4
     } else {
       ylegend <- -0.97 + (0.08 * (length(colours.to.use) - 2))
       xlegend <- -1.3
       xjust <- 0
-      ncol <- 1
+      number.of.columns <- 1
     }
 
-    prop <- roundDown(1 / max(unlist(lapply(trim.times, function(x) table(roundUp(x, to = 1)) / sum(!is.na(x))))), to = 1)
+    prop <- floor(1 / max(unlist(lapply(trim.times, function(x) table(ceiling(x)) / sum(!is.na(x))))))
 
     if (legend.pos == "corner")
       b <- 1
     else
-      b <- (roundUp(length(colours.to.use) / ncol, 1))
+      b <- (ceiling(length(colours.to.use) / number.of.columns))
 
     vertical.mar <- b + 2
    
-    {grDevices::svg(paste0(work.path, "times_", names(times)[i], suffix, ".svg"), 
-                    height = 5, width = 5, bg = "transparent")
-    
-    par(mar = c(b, (b + 2) / 2, 2, (b + 2) / 2), xpd = TRUE) # bottom, left, top, right
+    # The try call prevents the report from crashing down in the presence of unknown errors.
+    try(
+        {grDevices::svg(paste0(work.path, "times_", names(times)[i], suffix, ".svg"), 
+                        height = 5, width = 5, bg = "transparent")
+        
+        par(mar = c(b, (b + 2) / 2, 2, (b + 2) / 2), xpd = TRUE) # bottom, left, top, right
 
-    copyOfCirclePlotRad(main = names(times)[i], shrink = 1.05, xlab = "", ylab = "")
+        copyOfCirclePlotRad(main = names(times)[i], shrink = 1.05, xlab = "", ylab = "")
 
-    params <- myRoseDiag(trim.times, bins = 24, radii.scale = "linear",
-      prop = prop, tcl.text = -0.1, tol = 0.05, col = colours.to.use, border = "black")
+        params <- myRoseDiag(trim.times, bins = 24, radii.scale = radii.scale,
+          prop = prop, tcl.text = -0.1, tol = 0.05, col = colours.to.use, border = "black")
 
-    roseMean(trim.times, col = scales::alpha(params$col, 1), mean.length = c(0.07, -0.07), mean.lwd = 6,
-      box.range = "std.error", fill = "white", horizontal.border = "black", 
-      vertical.border = scales::alpha(sapply(params$col, darken), 1), box.size = c(1.015, 0.985), 
-      edge.length = c(0.025, -0.025), edge.lwd = 2)
+        roseMean(trim.times, col = scales::alpha(params$col, 1), mean.length = c(0.07, -0.07), mean.lwd = 6,
+          box.range = "std.error", fill = "white", horizontal.border = "black", 
+          vertical.border = scales::alpha(sapply(params$col, darken), 1), box.size = c(1.015, 0.985), 
+          edge.length = c(0.025, -0.025), edge.lwd = 2)
 
-    ringsRel(plot.params = params, border = "black", ring.text = TRUE,
-      ring.text.pos = 0.07, rings.lty = "f5", ring.text.cex = 0.8)
+        ringsRel(plot.params = params, border = "black", ring.text = TRUE,
+          ring.text.pos = 0.07, rings.lty = "f5", ring.text.cex = 0.8)
 
-    legend(x = xlegend, y = ylegend, xjust = xjust, ncol = ncol,
-      legend = paste(names(trim.times), " (", unlist(lapply(trim.times, function(x) sum(!is.na(x)))), ")", sep =""),
-      fill = params$col, bty = "n", x.intersp = 0.3, cex = 0.8)
+        legend(x = xlegend, y = ylegend, xjust = xjust, ncol = number.of.columns,
+          legend = paste(names(trim.times), " (", unlist(lapply(trim.times, function(x) sum(!is.na(x)))), ")", sep =""),
+          fill = params$col, bty = "n", x.intersp = 0.3, cex = 0.8)
 
-    grDevices::dev.off()}
+        grDevices::dev.off()},
+      silent = TRUE)
 
     if (i %% 2 == 0) {
       if (file.exists(paste0(work.path, "times_", names(times)[i], suffix, ".svg")))
@@ -836,6 +871,8 @@ printCircular <- function(times, bio, suffix = NULL){
         circular.plots <- paste0(circular.plots, "![](", work.path, "circular_svg_print_failure_bounce_back.png){ width=50% }")
     }
   }
+
+  appendTo("debug", "Finished printCircular")
   return(circular.plots)
 }
 
@@ -902,11 +939,6 @@ circularSection <- function(from, to, units = "hours", template = "clock24", lim
 #' @param main,sub,xlab,ylab title, subtitle, x label and y label of the plot.
 #' @param add add the rose diag to an existing plot.
 #' @param control.circle parameters passed to plot.default in order to draw the circle. The function circle.control is used to set the parameters.
-#' @param rings logical: if TRUE, inner rings are displayed for visual reference
-#' @param rings.lty line type of the rings, See help on par.
-#' @param ring.text logical: if notes should be displayed.
-#' @param ring.text.pos The position of the rings' text. Ignored if ring.text is set to FALSE.
-#' @param ring.text.cex The size of the ring's text. Ignored if ring.text is set to FALSE.
 #'
 #' @return A list with the zero, rotation and next.points values, to be parsed to an overlaying graphic.
 #'
@@ -918,9 +950,7 @@ myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24
   tol = 0.04, uin = NULL, xlim = c(-1, 1), ylim = c(-1, 1),
   prop = 1, digits = 2, plot.info = NULL, units = NULL, template = NULL,
   zero = NULL, rotation = NULL, main = NULL, sub = NULL, xlab = "",
-  ylab = "", add = TRUE, control.circle = circular::circle.control(), rings = c("none", "absolute", "relative"),
-  rings.lty = 2, ring.text = FALSE, ring.text.pos = -0.04, ring.text.cex = 1) {
-  rings <- match.arg(rings)
+  ylab = "", add = TRUE, control.circle = circular::circle.control()) {
   radii.scale <- match.arg(radii.scale)
 
   if (is.list(x)) {
@@ -1020,6 +1050,10 @@ myRoseDiag <- function (x, pch = 16, cex = 1, axes = TRUE, shrink = 1, bins = 24
 #' For more details about the circular package, visit its homepage at \url{https://github.com/cran/circular}
 #'
 #' @inheritParams myRoseDiag
+#' @param rings.lty line type of the rings, See help on par.
+#' @param ring.text logical: if notes should be displayed.
+#' @param ring.text.pos The position of the rings' text. Ignored if ring.text is set to FALSE.
+#' @param ring.text.cex The size of the ring's text. Ignored if ring.text is set to FALSE.
 #'
 #' @return No return value, adds to an existing plot.
 #'
@@ -1067,11 +1101,16 @@ roseMean <- function(input, col = c("cornflowerblue", "chartreuse3", "deeppink")
   mean.length = c(0.0125, -0.0125), mean.lwd = 4, box.range = c("none", "std.error", "sd"), 
   fill = "white", horizontal.border = "black", vertical.border = "black",
   box.size = c(1.015, 0.985), edge.length = c(0.025, -0.025), edge.lwd = 2){
+
   box.range <- match.arg(box.range)
+  
   if(is.matrix(input) | is.data.frame(input)){
+    # the different series in the input must be broken into individual
+    # list elements to play nicely with the code below.
     plotdata <- list()
-    for(i in 1:ncol(input)) 
+    for(i in 1:ncol(input)) {
       plotdata[[i]] <- input[,i]
+    }
     names(plotdata) <- colnames(input)
   } else {
     if (is.list(input)){
@@ -1079,31 +1118,53 @@ roseMean <- function(input, col = c("cornflowerblue", "chartreuse3", "deeppink")
         stop("Input is a list but not all elements in the list are circular objects.\n")
       plotdata <- input
     } else {
+      # this is the case where a vector was provided
       plotdata <- list(input)
     }
   }
+
   if (!exists("plotdata"))
     stop("Input must be a list of circular objects, a data.frame, a matrix or a vector.\n")
+  
+  # expand colour and fill to match the number of data series to be plotted
   col <- rep(col, length.out = length(plotdata))
   fill <- rep(fill, length.out = length(plotdata))
+  # same as above but for borders
   horizontal.border <- rep(horizontal.border, length.out = length(plotdata))
   vertical.border <- rep(vertical.border, length.out = length(plotdata))
+
+  # now start plogging, one at a time
   for (i in 1:length(plotdata)) {
+    # calculate a circular mean first (needed for the if-statement below)
     m <- circular::mean.circular(plotdata[[i]], na.rm = TRUE)
+   
+    # start by plotting the desired ranges, if one was requested
     if(box.range != "none"){
       if(box.range == "std.error")
         range <- std.error.circular(plotdata[[i]], silent = TRUE)
       if(box.range == "sd")
         range <- circular::sd.circular(plotdata[[i]])
-      zero <- attr(plotdata[[i]], "circularp")$zero # extracted from the circular data
+
+      # extract the location of the zero from the circular data
+      zero <- attr(plotdata[[i]], "circularp")$zero
+
+      # calculate the placement of the range borders
       left <- as.numeric(circular::conversion.circular((m - range), units = "radians")) * -1
       right <- as.numeric(circular::conversion.circular((m + range), units = "radians")) * -1
+
+      # convert to x and y coordinates
       xx <- c(box.size[1] * cos(seq(left, right, length = 1000) + zero), rev(box.size[2] * cos(seq(left, right, length = 1000) + zero)))
       yy <- c(box.size[1] * sin(seq(left, right, length = 1000) + zero), rev(box.size[2] * sin(seq(left, right, length = 1000) + zero)))
+      
+      # plot the range box
       polygon(xx, yy, col = fill[i], border = horizontal.border[i])
+
+      # plot the range borders
       circular::lines.circular(c(m + range, m + range), edge.length, lwd = edge.lwd, col = vertical.border[i])
       circular::lines.circular(c(m - range, m - range), edge.length, lwd = edge.lwd, col = vertical.border[i])
     }
+
+    # plot the thick mean in the middle
     circular::lines.circular(c(m, m), mean.length, lwd = mean.lwd, col = col[i], lend = 1)
   }
 }
@@ -1206,7 +1267,7 @@ copyOfRosediagRad <- function (x, zero, rotation, bins, upper, radii.scale, prop
     if (rotation == "clock")
         rel.freq <- rev(rel.freq)
     if (radii.scale == "sqrt") {
-        radius <- sqrt(rel.freq) * prop
+        radius <- sqrt(rel.freq * prop)
     }
     else {
         radius <- rel.freq * prop
@@ -1235,20 +1296,29 @@ copyOfRosediagRad <- function (x, zero, rotation, bins, upper, radii.scale, prop
 #' @keywords internal
 #'
 printSectionTimes <- function(section.times, bio, detections) {
-  Date <- NULL
-  Group <- NULL
+  appendTo("debug", "Starting printSectionTimes")
+
+  Date <- Group <- NULL
+  
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
   names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
+  
   time.range <- c(min(bio$Release.date), max(do.call(c, lapply(detections, function(x) x$Timestamp))))
   dayrange <- as.Date(time.range)
   dayrange[1] <- dayrange[1] - 1
   dayrange[2] <- dayrange[2] + 1
+
   capture.output <- lapply(names(section.times), function(i) {
+    # cat(i, '\n')
     plotdata <- suppressMessages(reshape2::melt(section.times[[i]]))
     plotdata <- plotdata[complete.cases(plotdata), ]
+  
     link <- match(plotdata$Transmitter, bio$Transmitter)
     plotdata$Group <- bio$Group[link]
+    plotdata$Group <- droplevels(plotdata$Group)
+  
     plotdata$Date <- as.Date(substring(as.character(plotdata$value), 1, 10))
+  
     p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = Date, fill = Group))
     p <- p + ggplot2::geom_bar(width = 0.9)
     p <- p + ggplot2::theme_bw()
@@ -1256,16 +1326,21 @@ printSectionTimes <- function(section.times, bio, detections) {
     p <- p + ggplot2::scale_y_continuous(expand = c(0, 0, 0.05, 0))
     p <- p + ggplot2::scale_x_date(limits = dayrange)
     p <- p + ggplot2::labs(x = "", y = "n")
+  
     if (length(unique(plotdata$Group)) <= 8) {
       p <- p + ggplot2::scale_fill_manual(values = as.vector(cbPalette)[1:length(unique(plotdata$Group))], drop = FALSE)
     }
-    ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/", i,"_days.png"), width = 10, height = length(unique(plotdata$variable)) * 2)
+  
+    ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/", i,"_days.png"), width = 10, height = length(unique(plotdata$variable)) * 2, limitsize = FALSE)
   })
+
+  appendTo("debug", "Finished printSectionTimes")
 }
 
 #' print the distribution of tags per location
 #'
 #' @param global.ratios the global ratios
+#' @param group.ratios the global ratios
 #' @param time.ratios the daily ratios
 #' @inheritParams migration
 #'
@@ -1273,7 +1348,9 @@ printSectionTimes <- function(section.times, bio, detections) {
 #'
 #' @keywords internal
 #'
-printGlobalRatios <- function(global.ratios, time.ratios, spatial, rsp.info) {
+printGlobalRatios <- function(global.ratios, group.ratios, time.ratios, spatial, rsp.info) {
+  appendTo("debug", "Starting printGlobalRatios")
+
   Timeslot <- NULL
   Location <- NULL
   n <- NULL
@@ -1284,6 +1361,7 @@ printGlobalRatios <- function(global.ratios, time.ratios, spatial, rsp.info) {
                 spatial = spatial,
                 rsp.info = rsp.info,
                 time.ratios = time.ratios,
+                group.ratios = group.ratios,
                 global.ratios = global.ratios)
 
   p <- plotRatios(input = fake.results, type = "absolutes")
@@ -1294,6 +1372,7 @@ printGlobalRatios <- function(global.ratios, time.ratios, spatial, rsp.info) {
   tryCatch(ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/global_ratios_percentages.svg"), width = 10, height = 4),
     error = function(e) {ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/global_ratios_percentages.png"), width = 10, height = 4)})
 
+  appendTo("debug", "Finished printGlobalRatios")
 }
 
 #' print the individual locations per day
@@ -1306,6 +1385,8 @@ printGlobalRatios <- function(global.ratios, time.ratios, spatial, rsp.info) {
 #' @keywords internal
 #'
 printIndividualResidency <- function(ratios, global.ratios, spatial, rsp.info) {
+  appendTo("debug", "Starting printIndividualResidency")
+
   counter <- 0
   individual.plots <- NULL
 
@@ -1334,6 +1415,7 @@ printIndividualResidency <- function(ratios, global.ratios, spatial, rsp.info) {
   if (interactive())
     close(pb)
 
+  appendTo("debug", "Finished printIndividualResidency")
   return(individual.plots)
 }
 
@@ -1347,35 +1429,65 @@ printIndividualResidency <- function(ratios, global.ratios, spatial, rsp.info) {
 #' @keywords internal
 #'
 printLastSection <- function(input, spatial) {
+  appendTo("debug", "Starting printLastSection")
   Section <- NULL
   n <- NULL
+
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
   names(cbPalette) <- c("Orange", "Blue", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
+  
   input$Group <- rownames(input)
   plotdata <- suppressMessages(reshape2::melt(input))
   colnames(plotdata) <- c("Group", "Section", "n")
   plotdata$Section <- factor(gsub("Disap. in |Disap. at ", "", plotdata$Section), 
                              levels = c(names(spatial$array.order), "Release"))
+
+  if (length(levels(plotdata$Section)) < 5)
+    number.of.columns <- 4
+
+  if (length(levels(plotdata$Section)) >= 5)
+    number.of.columns <- 3
+
+  if (length(levels(plotdata$Section)) >= 10)
+    number.of.columns <- 2
+
+  if (length(levels(plotdata$Section)) >= 20)
+    number.of.columns <- 1
+
+  number.of.rows <- ceiling(length(unique(plotdata$Group)) / number.of.columns)
+
+  # 900px per row (300px per inch on my computer)
+  if (number.of.rows <= 2)
+    the.height <- 900 * number.of.rows
+  else
+    the.height <- 900 * log(number.of.rows, base = 1.5)
+
+  # 20 px per x-axis label character
+  longest.section.name <- max(nchar(as.character(plotdata$Section)))
+  the.height <- the.height + 20 * longest.section.name
+
   p <- ggplot2::ggplot(plotdata, ggplot2::aes(x = Section, y = n))
   p <- p + ggplot2::geom_bar(stat = "identity", fill = cbPalette[[2]], colour = "transparent")
-  p <- p + ggplot2::facet_grid(. ~ Group)
   p <- p + ggplot2::theme_bw()
   p <- p + ggplot2::labs(x = "", y = "n")
   p <- p + ggplot2::scale_y_continuous(expand = c(0, 0, 0.05, 0))
-  the.width <- max(2, (ncol(input) - 1) * nrow(input) * 0.7)
-  ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/last_section.png"), width = the.width, height = 4)
+  p <- p + ggplot2::facet_wrap(. ~ Group, ncol = number.of.columns)
+  p <- p + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1))
+  
+  ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/last_section.png"), units = "px", width = 1800, height = ceiling(the.height), limitsize = FALSE)
+
+  appendTo("debug", "Finished printLastSection")
 }
 
 #' Print a simple barplot with the number of tags last seen at each section
-#'
-#' @param input a table with the last seen data
-#' @param sections the order of the sections
 #'
 #' @return No return value, called to plot and save graphic.
 #'
 #' @keywords internal
 #'
 printLastArray <- function(status.df) {
+  appendTo("debug", "Starting printLastArray")
+
   Very.last.array <- NULL
   Group <- NULL
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
@@ -1395,7 +1507,9 @@ printLastArray <- function(status.df) {
   p <- p + ggplot2::coord_flip()
   p <- p + ggplot2::guides(fill = ggplot2::guide_legend(reverse = TRUE))
   the.height <- max(2, ((length(levels(status.df$Very.last.array)) - 1) * 0.5))
-  ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/last_arrays.png"), width = 6, height = the.height)
+  ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/last_arrays.png"), width = 6, height = the.height, limitsize = FALSE)
+
+  appendTo("debug", "Finished printLastArray")
 }
 
 #' Print sensor data for each individual tag
@@ -1408,6 +1522,8 @@ printLastArray <- function(status.df) {
 #' @return A string of file locations in rmd syntax, to be included in printRmd
 #'
 printSensorData <- function(detections, spatial, rsp.info, colour.by = c("auto", "stations", "arrays"), extension = "png") {
+  appendTo("debug", "Starting printSensorData")
+
   individual.plots <- NULL
   Timestamp <- NULL
   Sensor.Value <- NULL
@@ -1474,7 +1590,7 @@ printSensorData <- function(detections, spatial, rsp.info, colour.by = c("auto",
       }
 
       # Save
-      ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/", tag, "_sensors.", extension), width = the.width, height = the.height)  # better to save in png to avoid point overlapping issues
+      ggplot2::ggsave(paste0(tempdir(), "/actel_report_auxiliary_files/", tag, "_sensors.", extension), width = the.width, height = the.height, limitsize = FALSE)  # better to save in png to avoid point overlapping issues
 
       n.plots <- n.plots + 1
       if (n.plots %% 2 == 0) {
@@ -1488,5 +1604,8 @@ printSensorData <- function(detections, spatial, rsp.info, colour.by = c("auto",
   })
   if (interactive())
     close(pb)
+
+  appendTo("debug", "Finished printSensorData")
+
   return(individual.plots)
 }

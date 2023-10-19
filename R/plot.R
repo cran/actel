@@ -150,11 +150,11 @@ plotLive <- function(input, arrays, show.stations = FALSE, array.size = 2, stati
   p <- p + ggplot2::geom_path()
   
   a <- pd[pd$Array == pd$Y, ]
-  p <- p + ggplot2::geom_path(data = a, ggplot2::aes(col = Section), size = a$Size)
+  p <- p + ggplot2::geom_path(data = a, ggplot2::aes(col = Section), linewidth = a$Size)
   
   if (show.stations) {
     s <- pd[pd$Array != pd$Y, ]
-    p <- p + ggplot2::geom_path(data = s, col = s$col, size = s$Size)
+    p <- p + ggplot2::geom_path(data = s, col = s$col, linewidth = s$Size)
   }
 
   if (show.caps)
@@ -295,7 +295,7 @@ plotSensors <- function(input, tag, sensor, title = tag, xlab, ylab, pcol, psize
   detections <- detections[detections$Sensor.Unit %in% sensor, ]
 
   p <- ggplot2::ggplot(data = detections, ggplot2::aes(x = Timestamp, y = Sensor.Value, by = Sensor.Unit))
-  p <- p + ggplot2::geom_line(col = lcol, size = lsize)
+  p <- p + ggplot2::geom_line(col = lcol, linewidth = lsize)
   p <- p + ggplot2::geom_point(size = psize, ggplot2::aes(colour = Colour))
   p <- p + ggplot2::scale_color_manual(values = pcol, drop = FALSE, name = ifelse(colour.by == "array", "Array", "Section"))
   p <- p + ggplot2::labs(title = title, x = ifelse(missing(xlab), paste("tz:", input$rsp.info$tz), xlab), y = ifelse(missing(ylab), "Sensor value", ylab))
@@ -311,10 +311,13 @@ plotSensors <- function(input, tag, sensor, title = tag, xlab, ylab, pcol, psize
 #' @param title An optional title for the plot.
 #' @param xlab,ylab Optional axis names for the plot. If left empty, default axis names will be added.
 #' @param lwd The line width, only relevant for line plots.
-#' @param col The colour of the line or bars. Defaults to blue.
+#' @param col The colour of the lines or bars.
+#' @param by.group Logical: Should the data be presented separately for each group?
+#' @param y.style The style of the y axis. Either "absolute", for the number of animals that arrive in each day, or "relative", for the proportion of animals over the total number of animals that arrived.
 #' @param type The type of plot to be drawn. By default, a line is plotted if cumulative = TRUE, and bars are plotted otherwise.
 #' @param timestep The time resolution for the grouping of the results. Defaults to "days", but can be set to "hours" and "mins" (at the expense of computing time).
 #' @param cumulative Logical. If TRUE, a cumulative plot of arrivals is drawn, otherwise the number of tags simultaneously present at the array(s) is drawn.
+#' @param ladder.type Type of cumulative plot to show. "arrival" to plot the moments of arrival, or "departure" to plot the moments of departure. Not applicable for non-cumulative plots.
 #'
 #' @return A ggplot object.
 #'
@@ -333,13 +336,24 @@ plotSensors <- function(input, tag, sensor, title = tag, xlab, ylab, pcol, psize
 #' 
 #' @export
 #' 
-plotArray <- function(input, arrays, title, xlab, ylab, lwd = 1, col = "#56B4E9", 
-  type = c("default", "bars", "lines"), timestep = c("days", "hours", "mins"), cumulative = FALSE) {
+plotArray <- function(input, arrays, title, xlab, ylab, lwd = 1, col, by.group = TRUE, y.style = c("absolute", "relative"),
+  type = c("default", "bars", "lines"), timestep = c("days", "hours", "mins"), cumulative = FALSE, ladder.type = c("arrival", "departure")) {
+  
+  cbPalette <- c("#56B4E9", "#E69F00", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+  names(cbPalette) <- c("Blue", "Orange", "Green", "Yellow", "Darkblue", "Darkorange", "Pink", "Grey")
+
   x <- NULL
   y <- NULL
+  Group <- NULL
 
   timestep <- match.arg(timestep)
   type <- match.arg(type)
+  y.style <- match.arg(y.style)
+
+  if (!missing(ladder.type) & !cumulative)
+    warning("'ladder.type' was set, but cumulative = FALSE. Ignoring ladder.type.", immediate. = TRUE, call. = FALSE)
+
+  ladder.type <- match.arg(ladder.type)
 
   if (type == "default") {
     if (cumulative)
@@ -357,49 +371,83 @@ plotArray <- function(input, arrays, title, xlab, ylab, lwd = 1, col = "#56B4E9"
   if (any(link <- is.na(match(arrays, names(input$arrays)))))
     stop("Could not find array(s) '", paste(arrays[link], collapse = "', '"), "' in the study area.", call. = FALSE)
 
+  n.groups <- length(unique(input$status.df$Group))
+  
+  if (missing(col)) {
+    if (by.group) {
+      if (n.groups < 8)
+        col <- cbPalette[1:n.groups]
+      else
+        col <- gg_colour_hue(n.groups)
+      names(col) <- unique(input$status.df$Group)
+    } else {
+      col <- cbPalette[1]
+      names(col) <- "All"
+    }
+  } else {
+    if (by.group) {
+      if (length(col) != n.groups)
+        stop("The number of colours provided does not match the number of groups in the analysis.", call. = FALSE)
+      names(col) <- unique(input$status.df$Group)      
+    } else {
+      col <- col[1]
+      names(col) <- "All"
+    }
+  }
+
   array.string <- paste0("^", arrays, "$", collapse = "|")
+
   # choose title
   if (missing(title)) {
-    if (cumulative)
-      title <- paste(paste(arrays, collapse = "|"), "- Cumulative arrivals")
+    if (cumulative) {
+      if (ladder.type == "arrival")
+        title <- paste(paste(arrays, collapse = "|"), "- Cumulative arrivals")
+      else
+        title <- paste(paste(arrays, collapse = "|"), "- Cumulative departures")        
+    }
     else
       title <- paste(paste(arrays, collapse = "|"), "- Simultaneous presence")
   }
 
-  # extract information
+  # extract information as well as time ranges
   first.time <- as.POSIXct(NA)[-1]
-  last.time <- as.POSIXct(NA)[-1]
-  
+  last.time <- as.POSIXct(NA)[-1]  
+
   plot.list <- lapply(names(input$valid.movements), function(tag) {
     # cat(tag, "\n")
     moves <- as.data.frame(input$valid.movements[[tag]])
     output <- moves[grepl(array.string, moves$Array), ]
 
     if (nrow(output) > 0) {
-      first.time <<- c(first.time, output$First.time[1])
+      output$First.time <- as.POSIXct(round.POSIXt(output$First.time, units = timestep))
+      output$Last.time <- as.POSIXct(round.POSIXt(output$Last.time, units = timestep))
+
+      # If the period starts in daylight saving time: Standardize so the break points are in "normal" time
+      if (as.POSIXlt(output$First.time[1])$isdst == 1)
+        output$First.time <- output$First.time + 3600
+
+      if (as.POSIXlt(output$Last.time[1])$isdst == 1)
+        output$Last.time <- output$Last.time + 3600
+      
       last.time <<- c(last.time, output$Last.time[nrow(output)])
-      output$First.time <- round.POSIXt(output$First.time, units = timestep)
-      output$Last.time <- round.POSIXt(output$Last.time, units = timestep)
+      first.time <<- c(first.time, output$First.time[1])
       return(output)
     } else {
       return(NULL)
     }
   })
+  names(plot.list) <- names(input$valid.movements)
+  plot.list <- plot.list[!sapply(plot.list, is.null)]
 
   attributes(first.time)$tzone <- input$rsp.info$tz
   attributes(last.time)$tzone <- input$rsp.info$tz
 
-  if (is.null(first.time) | is.null(last.time))
-    stop("Not enough valid data to draw a plot. Aborting.", call. = FALSE)
-
-  plot.list <- plot.list[!sapply(plot.list, is.null)]
-
   if (cumulative)
-    last.time <- round.POSIXt(max(first.time), units = timestep)
+    last.time <- max(first.time)
   else
-    last.time <- round.POSIXt(max(last.time), units = timestep)
+    last.time <- max(last.time)
 
-  first.time <- round.POSIXt(min(first.time), units = timestep)
+  first.time <- min(first.time)
   
   if (timestep == "days")
     seconds <- 3600 * 24
@@ -412,44 +460,142 @@ plotArray <- function(input, arrays, title, xlab, ylab, lwd = 1, col = "#56B4E9"
 
   timerange <- seq(from = first.time, to = last.time, by = seconds)  
 
-  plotdata <- data.frame(x = timerange, y = rep(0, length(timerange)))
+  if (is.null(first.time) | is.null(last.time))
+    stop("Not enough valid data to draw a plot. Aborting.", call. = FALSE)
 
-  capture <- lapply(plot.list, function(x) {
-    to.add <- rep(0, nrow(plotdata))
-    if (cumulative) {
-      arrived.here <- which(x$First.time[1] == timerange)
-      to.add[arrived.here:length(to.add)] <- 1
-    } else {
-      arrived.here <- sapply(x$First.time, function(i) which(i == timerange))
-      left.here <- sapply(x$Last.time, function(i) which(i == timerange))
-      for(i in 1:length(arrived.here))
-        to.add[arrived.here[i]:left.here[i]] <- 1
+  if (by.group) {
+    link <- match(names(plot.list), input$status.df$Transmitter)
+    group.names <- input$status.df$Group[link]
+  
+    plotdata <- lapply(unique(group.names), function(the.group) {
+      # cat("Group: ", as.character(the.group), "\n")
+
+      trimmed.list <- plot.list[group.names == the.group]
+      aux <- data.frame(x = timerange)
+      aux[, as.character(the.group)] <- 0
+
+      # counter <- 1
+      capture <- lapply(trimmed.list, function(x) {
+        # cat(counter, "\n"); counter <<- counter + 1
+
+        to.add <- rep(0, nrow(aux))
+        if (cumulative) {
+          if (ladder.type == "arrival")
+            start.here <- which(x$First.time[1] == timerange)
+          else
+            start.here <- which(x$Last.time[1] == timerange)
+
+          to.add[start.here:length(to.add)] <- 1
+        } else {
+          start.here <- sapply(x$First.time, function(i) which(i == timerange))
+          stop.here <- sapply(x$Last.time, function(i) which(i == timerange))
+
+          for (i in 1:length(start.here))
+            to.add[start.here[i]:stop.here[i]] <- 1
+        }
+        aux[, as.character(the.group)] <<- aux[, as.character(the.group)] + to.add
+      })
+
+      if (y.style == "relative") {
+        if (cumulative)
+          aux[, as.character(the.group)] <- aux[, as.character(the.group)] / max(aux[, as.character(the.group)])
+        else
+          aux[, as.character(the.group)] <- aux[, as.character(the.group)] / sum(aux[, as.character(the.group)])
+      }
+
+      return(aux)
+    })
+
+    names(plotdata) <- unique(group.names)
+
+  } else {
+    plotdata <- data.frame(x = timerange, All = rep(0, length(timerange)))
+
+    capture <- lapply(plot.list, function(x) {
+      to.add <- rep(0, nrow(plotdata))
+      if (cumulative) {
+          if (ladder.type == "arrival")
+            start.here <- which(x$First.time[1] == timerange)
+          else
+            start.here <- which(x$Last.time[1] == timerange)
+        to.add[start.here:length(to.add)] <- 1
+      } else {
+        start.here <- sapply(x$First.time, function(i) which(i == timerange))
+        stop.here <- sapply(x$Last.time, function(i) which(i == timerange))
+        for(i in 1:length(start.here))
+          to.add[start.here[i]:stop.here[i]] <- 1
+      }
+      plotdata$All <<- plotdata$All + to.add
+    })
+
+    if (y.style == "relative") {
+      if (cumulative)
+        plotdata$All <- plotdata$All / max(plotdata$All)
+      else
+        plotdata$All <- plotdata$All / sum(plotdata$All)
     }
-    plotdata$y <<- plotdata$y + to.add
-  })
+
+    plotdata <- list(All = plotdata)
+  }
 
   if (type == "lines") {
-    aux1 <- plotdata
-    aux1$x <- aux1$x - (seconds / 2)
-    aux1$index <- seq(from = 1, to = nrow(aux1) * 2 - 1, by = 2)
+    recipient <- lapply(plotdata, function(x) {
+      aux1 <- x
+      aux1$x <- aux1$x - (seconds / 2)
+      aux1$index <- seq(from = 1, to = nrow(aux1) * 2 - 1, by = 2)
 
-    aux2 <- plotdata
-    aux2$x <- aux2$x + (seconds / 2)
-    aux2$index <- seq(from = 2, to = nrow(aux2) * 2, by = 2)
+      aux2 <- x
+      aux2$x <- aux2$x + (seconds / 2)
+      aux2$index <- seq(from = 2, to = nrow(aux2) * 2, by = 2)
 
-    plotdata <- rbind(aux1, aux2)
-    plotdata <- plotdata[order(plotdata$index), ]
+      x <- rbind(aux1, aux2)
+
+      x <- x[order(x$index), ]
+
+      output <- reshape2::melt(x, id.vars = c("x", "index"), variable.name = "Group", value.name = "y")
+
+      return(output)
+    })
+  } else {
+    recipient <- lapply(plotdata, function(x) {
+      x$Group <- colnames(x)[2]
+      colnames(x)[2] <- "y"
+      return(x)
+    })
+  }
+    
+  plotdata <- data.table::rbindlist(recipient)
+
+  if (missing(xlab))
+    xlab <- paste("tz:", input$rsp.info$tz)
+
+  if (missing(ylab)) {
+    if (y.style == "absolute") {
+      if (cumulative & ladder.type == "departure")
+        ylab <- "Departures (n)"
+      else
+        ylab <- "Arrivals (n)"
+    } else {
+      if (cumulative & ladder.type == "departure")
+        ylab <- "Departures (proportion)"
+      else
+        ylab <- "Arrivals (proportion)"
+    }
   }
 
   p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = x, y = y))
   if (type == "bars") {
-    p <- p + ggplot2::geom_bar(stat = "identity", fill = col)
+    p <- p + ggplot2::geom_bar(stat = "identity", position = ggplot2::position_dodge2(preserve = "single", padding = 0),
+                               ggplot2::aes(fill = Group))
     p <- p + ggplot2::scale_y_continuous(expand = c(0, 0, 0.05, 0))
+    p <- p + ggplot2::scale_fill_manual(values = col)
   }
-  if (type == "lines")
-    p <- p + ggplot2::geom_path(size = lwd, col = col)
+  if (type == "lines") {
+    p <- p + ggplot2::geom_path(linewidth = lwd, ggplot2::aes(col = Group))
+    p <- p + ggplot2::scale_colour_manual(values = col)
+  }
   p <- p + ggplot2::theme_bw()
-  p <- p + ggplot2::labs(title = title, x = ifelse(missing(xlab), paste("tz:", input$rsp.info$tz), xlab), y = ifelse(missing(ylab), "n", ylab))
+  p <- p + ggplot2::labs(title = title, x = xlab, y = ylab)
   return(p)
 }
 
@@ -592,7 +738,7 @@ plotMoves <- function(input, tags, title, xlab, ylab, col, array.alias, show.rel
 
   p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = date, y = array, colour = tag))
   p <- p + ggplot2::geom_line(ggplot2::aes(group = tag))
-  p <- p + ggplot2::geom_line(ggplot2::aes(group = interaction(tag, event)), size = 2)
+  p <- p + ggplot2::geom_line(ggplot2::aes(group = interaction(tag, event)), linewidth = 2)
   p <- p + ggplot2::geom_point(data = final.points)
   p <- p + ggplot2::theme_bw()
   p <- p + ggplot2::scale_y_discrete(drop = FALSE)   # Show all Y axis values
@@ -918,9 +1064,9 @@ plotDetections <- function(input, tag, type, y.axis = c("auto", "stations", "arr
   if ((frame.warning & add.movements) && attributes(movements)$p.type == "Overridden") {
     p <- p + ggplot2::theme(
       panel.background = ggplot2::element_rect(fill = "white"),
-      panel.border = ggplot2::element_rect(fill = NA, colour = "#ef3b32" , size = 2),
-      panel.grid.major = ggplot2::element_line(size = 0.5, linetype = 'solid', colour = "#ffd8d6"),
-      panel.grid.minor = ggplot2::element_line(size = 0.25, linetype = 'solid', colour = "#ffd8d6"),
+      panel.border = ggplot2::element_rect(fill = NA, colour = "#ef3b32" , linewidth = 2),
+      panel.grid.major = ggplot2::element_line(linewidth = 0.5, linetype = 'solid', colour = "#ffd8d6"),
+      panel.grid.minor = ggplot2::element_line(linewidth = 0.25, linetype = 'solid', colour = "#ffd8d6"),
       legend.key = ggplot2::element_rect(fill = "white", colour = "white"),
       )
     default.cols <- FALSE
@@ -928,9 +1074,9 @@ plotDetections <- function(input, tag, type, y.axis = c("auto", "stations", "arr
   if ((frame.warning & add.movements) && attributes(movements)$p.type == "Manual") {
      p <- p + ggplot2::theme(
       panel.background = ggplot2::element_rect(fill = "white"),
-      panel.border = ggplot2::element_rect(fill = NA, colour = "#ffd016" , size = 2),
-      panel.grid.major = ggplot2::element_line(size = 0.5, linetype = 'solid', colour = "#f2e4b8"),
-      panel.grid.minor = ggplot2::element_line(size = 0.25, linetype = 'solid', colour = "#f2e4b8"),
+      panel.border = ggplot2::element_rect(fill = NA, colour = "#ffd016" , linewidth = 2),
+      panel.grid.major = ggplot2::element_line(linewidth = 0.5, linetype = 'solid', colour = "#f2e4b8"),
+      panel.grid.minor = ggplot2::element_line(linewidth = 0.25, linetype = 'solid', colour = "#f2e4b8"),
       legend.key = ggplot2::element_rect(fill = "white", colour = "white"),
       )
     default.cols <- FALSE
@@ -986,6 +1132,8 @@ plotDetections <- function(input, tag, type, y.axis = c("auto", "stations", "arr
 #'
 #' @param times A list of of time vectors (each vector will be plotted as a series).
 #' @param night A vector of two times defining the start and stop of the night period (in HH:MM format).
+#' @param circular.scale Allows the user to decide between using an area-adjusted scale ("area"), or a linear scale ("linear").
+#'  Defaults to "area", which better represents the proportion differences in the dataset.
 #' @param col A vector of colour names to paint each time series (colours will be added transparency).
 #' @param alpha A value between 0 and 1 for the opacity of each layer (defaults to 0.8).
 #' @param title A title for the plot.
@@ -1027,13 +1175,20 @@ plotDetections <- function(input, tag, type, y.axis = c("auto", "stations", "arr
 #'
 #' @export
 #'
-plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.dash = TRUE,
+plotTimes <- function(times, night = NULL, circular.scale = c("area", "linear"), col, alpha = 0.8, title = "", mean.dash = TRUE,
   mean.range = TRUE, mean.range.darken.factor = 1.4, rings = TRUE, file, width, height, bg = "transparent", ncol, 
   legend.pos = c("auto", "corner", "bottom"), ylegend, xlegend, xjust = c("auto", "centre", "left", "right"), 
   expand = 0.95, cex = 1){
 
   legend.pos <- match.arg(legend.pos)
   xjust <- match.arg(xjust)
+  circular.scale <- match.arg(circular.scale)
+
+  # convert user-friendly circular.scale to internal radii.scale
+  if (circular.scale == "area")
+    radii.scale <- "sqrt"
+  else
+    radii.scale <- "linear"
 
   if (!inherits(times, "list"))
     stop("'times' must be a list.", call. = FALSE)
@@ -1155,11 +1310,11 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
     if (missing(ylegend)) {
       if (ncol > 1)
         warning("Plotting the legend in the corner but ncol > 1. This will likely lead to bad results.", immediate. = TRUE, call. = FALSE)
-      if (roundUp(length(times)/ ncol, 1) > 2) {
+      if (ceiling(length(times)/ ncol) > 2) {
         if (!missing(file) && (grepl(".png$", file) | grepl(".tiff", file)))
-          ylegend <- -0.97 + (0.06 * (roundUp(length(times) / ncol, 1) - 2))
+          ylegend <- -0.97 + (0.06 * (ceiling(length(times) / ncol) - 2))
         if (missing(file) || (grepl(".svg$", file) | grepl(".pdf", file)))
-          ylegend <- -0.97 + (0.08 * (roundUp(length(times) / ncol, 1) - 2))
+          ylegend <- -0.97 + (0.08 * (ceiling(length(times) / ncol) - 2))
       } else {
         ylegend <- -0.97      
       }
@@ -1196,7 +1351,7 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
       xlegend <- 1.3
   }
 
-  prop <- roundDown(1 / max(unlist(lapply(times, function(x) table(roundUp(x, to = 1)) / sum(!is.na(x))))), to = 1)
+  prop <- floor(1 / max(unlist(lapply(times, function(x) table(ceiling(x)) / sum(!is.na(x))))))
 
   if (!missing(file))
     area.prop <- width/height
@@ -1206,7 +1361,7 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
   if (legend.pos == "corner")
     b <- 1
   else
-    b <- (roundUp(length(times) / ncol, 1))
+    b <- (ceiling(length(times) / ncol))
 
   vertical.mar <- b + 2
   horizontal.mar <- vertical.mar * area.prop
@@ -1224,7 +1379,7 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
       limits = c(1, 0), fill = scales::alpha("grey", 0.3), border = "transparent")
   }
 
-  params <- myRoseDiag(times, bins = 24, radii.scale = "linear",
+  params <- myRoseDiag(times, bins = 24, radii.scale = radii.scale,
     prop = prop, tcl.text = -0.1, tol = 0.05, col = colours, border = "black")
 
   if (mean.dash) {
@@ -1245,6 +1400,9 @@ plotTimes <- function(times, night = NULL, col, alpha = 0.8, title = "", mean.da
 
   if(!missing(file))
     message("M: Plot saved to ", file)
+
+  # graphics device is turned off by on.exit set up 
+  # right after the device was opened.
 }
 
 #' Calculate beta estimations for efficiency
@@ -1616,12 +1774,14 @@ plotResidency <- function(input, tag, title, xlab, ylab, col) {
 #' with other ggplot functions, or even together with other packages such as patchwork.
 #'
 #' @param input The results of an actel analysis (either explore, migration or residency).
-#' @param group An optional argument to plot only the data corresponding to one group.
+#' @param groups An optional argument to plot only the data corresponding to some groups.
 #' @param sections An optional argument to plot the residency of the multiple groups for a specific subset of sections.
 #' @param type The type of residency to be displayed. One of 'absolutes' (the default) or 'percentages'.
 #' @param title An optional title for the plot. If left empty, a default title will be added.
 #' @param xlab,ylab Optional axis names for the plot. If left empty, default axis names will be added.
 #' @param col An optional colour scheme for the detections. If left empty, default colours will be added.
+#' @param col.by Colour scheme to use. One of 'section' or 'group'. By default, plots are coloured by section if all
+#'  sections are displayed, and by group if only a subset of the sections is required using the argument `sections`.
 #'
 #' @return A ggplot object.
 #'
@@ -1637,7 +1797,7 @@ plotResidency <- function(input, tag, title, xlab, ylab, col) {
 #' # Because plotRatios returns a ggplot object, you can store
 #' # it and edit it manually, e.g.:
 #' library(ggplot2)
-#' p <- plotRatios(example.residency.results, group = "A")
+#' p <- plotRatios(example.residency.results, groups = "A")
 #' p <- p + xlab("changed the x axis label a posteriori")
 #' p
 #'
@@ -1645,10 +1805,12 @@ plotResidency <- function(input, tag, title, xlab, ylab, col) {
 #'
 #' @export
 #'
-plotRatios <- function(input, group, sections, type = c("absolutes", "percentages"), title, xlab, ylab, col) {
+plotRatios <- function(input, groups, sections, type = c("absolutes", "percentages"), 
+                       title, xlab, ylab, col, col.by = c("default", "section", "group")) {
   # NOTE: The NULL variables below are actually column names used by ggplot.
   # This definition is just to prevent the package check from issuing a note due unknown variables.
   type <- match.arg(type)
+  col.by <- match.arg(col.by)
   Timeslot <- NULL
   Location <- NULL
   Group <- NULL
@@ -1666,82 +1828,106 @@ plotRatios <- function(input, group, sections, type = c("absolutes", "percentage
   if (input$rsp.info$analysis.type != "residency")
     stop("plotRatios can only be used with residency results.", call. = FALSE)
 
-  if (!missing(group) & !missing(sections))
-    stop("Please use only one of 'group' or 'sections' at a time.", call. = FALSE)
+  if (col.by == 'default') {
+    if (missing(sections))
+      col.by <- 'section'
+    else
+      col.by <- 'group'
+  }
 
-  if (!missing(group) && length(group) > 1)
-    stop("Please select only one group.", call. = FALSE)
+  if (missing(title)) {
+    if (missing(groups)) {
+      if (missing(sections))
+        title <- "Global ratios"
+      else
+        title <- paste0("Ratios for section", ifelse(length(sections) > 1, "s ", " "), paste0(sections, collapse = ", "))
+    } else {
+      if (missing(sections))
+        title <- paste0("Ratios for group", ifelse(length(groups) > 1, "s ", " "), paste0(groups, collapse = ", "))
+      else
+        title <- paste0("Ratios for group", ifelse(length(groups) > 1, "s ", " "), paste0(groups, collapse = ", "), 
+          " in section", ifelse(length(sections) > 1, "s ", " "), paste0(sections, collapse = ", "))
+    }
+  }
 
-  if (!missing(group) && is.na(match(group, names(input$group.ratios))))
-    stop("Could not find group '", group, "' in the input.", call. = FALSE)
+  if (!missing(groups)) {
+    if (any(link <- is.na(match(groups, names(input$group.ratios)))))
+      stop("Could not find group(s) '", paste(groups[link], collapse = "', '") , "' in the input.", call. = FALSE)
+  } else {
+    groups <- names(input$group.ratios)
+  }
 
   if (!missing(sections)) {
     if (link <- any(is.na(match(sections, colnames(input$global.ratios$absolutes)))))
       stop("Section", ifelse(sum(link) > 1, "s '", " '"), paste0(sections[link], collapse = "', '"),
         ifelse(sum(link) > 1, "' do ", "' does "), "not exist, or no tags have ever been assigned to it.", call. = FALSE)
-  }
-
-  if (missing(group)) {
-    if (missing(sections)) {
-      the.ratios <- input$global.ratios[[type]]
-    } else {
-      if (type == "absolutes") {
-        aux <- lapply(names(input$group.ratios), function(i) {
-          x <- input$group.ratios[[i]]$absolutes
-          x <- x[, c(1, match(sections, colnames(x)))]
-          if (ncol(x) > 2)
-            x$n <- apply(x[, -1], 1, sum)
-          else
-            colnames(x)[2] <- "n"
-          x$Group <- i
-          return(x[, c("Timeslot", "Group", "n")])
-        })
-        the.ratios <- as.data.frame(data.table::rbindlist(aux))
-      } else {
-        # because there is no easy cbindlist function, initiate the dataframe with the timeslots only
-        # and then append the relevant information per group.
-        the.ratios <- input$group.ratios[[1]]$absolutes[, "Timeslot", drop = FALSE]
-        capture <- lapply(names(input$group.ratios), function(i) {
-          if (any(!is.na(match(sections, colnames(input$group.ratios[[i]]$absolutes))))) {
-            x <- input$group.ratios[[i]]$absolutes
-            link <- match(sections, colnames(x))
-            link <- link[!is.na(link)]
-            x <- x[, c(1, link)]
-            if (ncol(x) > 2)
-              x[, i] <- apply(x[, -1], 1, sum)
-            else
-              colnames(x)[2] <- i
-            the.ratios <<- cbind(the.ratios, x[, i, drop = FALSE])
-          } # else skip this group
-        })
-        if (ncol(the.ratios) > 2) {
-          # Turn into percentages (like it is done in globalRatios)
-          the.ratios$Total <- apply(the.ratios[, -1], 1, sum)
-          the.ratios[, -1] <- round(the.ratios[, -1] / the.ratios[, ncol(the.ratios)], 3)
-          # failsafe in case totals are 0 in group ratios
-          the.ratios[, 2:ncol(the.ratios)][is.na(the.ratios[, 2:ncol(the.ratios)])] <- 0
-        } else {
-          # else values are either 1 or 0
-          the.ratios[, 2][the.ratios[, 2] > 1] <- 1
-          the.ratios$Total <- the.ratios[, 2]
-        }
-      }      
-      attributes(the.ratios)$timestep <- attributes(input$global.ratios[[1]])$timestep
-    }
   } else {
-    the.ratios <- input$group.ratios[[group]][[type]]
+    sections <- colnames(input$global.ratios[[1]])[-c(1, ncol(input$global.ratios[[1]]))]
   }
 
-  if (missing(title)) {
-    if (missing(group)) {
-      if (missing(sections))
-        title <- "Global ratios"
+  aux <- lapply(groups, function(i) {
+    # cat(i, '\n')
+    x <- input$group.ratios[[i]]$absolutes
+
+    # create placeholder columns for sections where the
+    if (any(link <- is.na(match(sections, colnames(x))))) {
+      x[, sections[link]] <- 0
+      x <- x[, c('Timeslot', sections, 'Total')]
+    }
+
+    x <- x[, c(1, match(sections, colnames(x)))]
+
+    x$Group <- i
+
+    if (col.by == 'group') {
+      # If we want to colour by group, all the section by section info is irrelevant.
+      # make a new column with the sum per day, and discard the rest
+
+      if (ncol(x) > 3)
+        x$n <- apply(x[, -c(1, ncol(x))], 1, sum)
       else
-        title <- paste0("Group ratios for section", ifelse(length(sections) > 1, "s ", " "), paste0(sections, collapse = ", "))
+        colnames(x)[2] <- "n"
+
+      return(x[, c("Timeslot", "Group", "n")])
+
     } else {
-      title <- paste("Ratios for group", group)
+      # otherwise, save all the info
+      return(x)
+    }
+  })
+
+  if (col.by == 'group') {
+    the.ratios <- aux[[1]][, c('Timeslot', 'n')]
+    colnames(the.ratios)[2] <- aux[[1]]$Group[1]
+    # add other groups as new columns if there are any
+    if (length(aux) > 1) {
+      for (i in 2:length(aux)) {        
+        the.ratios[, ncol(the.ratios) + 1] <- aux[[i]]$n
+        colnames(the.ratios)[ncol(the.ratios)] <- aux[[i]]$Group[1]
+      }
+    }
+  } else { # if col.by == 'section'
+    # extract the first table and start the process, remove the group column.
+    the.ratios <- aux[[1]][, !grepl('Group', colnames(aux[[1]]))]
+    if (length(aux) > 1) {
+      # collapse all groups by summing the cell values
+      for (i in 2:length(aux)) {
+        the.ratios[, 2:(ncol(the.ratios))] <- the.ratios[, 2:(ncol(the.ratios))] + aux[[i]][, 2:(ncol(aux[[i]])-1)]
+      }
+      rm(i)
     }
   }
+
+  if (type == 'percentages') {
+    # calculate percentages per row
+    for (r in 1:nrow(the.ratios)) {
+      if (!(sum(the.ratios[r, 2:(ncol(the.ratios))]) == 0))
+        the.ratios[r, 2:(ncol(the.ratios))] <- the.ratios[r, 2:(ncol(the.ratios))] / sum(the.ratios[r, 2:(ncol(the.ratios))])
+    }
+    rm(r) 
+  }
+
+  # return(the.ratios)
 
   if (missing(xlab))
     xlab <- ""
@@ -1753,64 +1939,54 @@ plotRatios <- function(input, group, sections, type = c("absolutes", "percentage
       ylab <- "% tags"
   }
 
-  if (missing(sections)) {
-    plotdata <- suppressMessages(reshape2::melt(the.ratios[, -ncol(the.ratios)], id.vars = "Timeslot"))
-    colnames(plotdata) <- c("Timeslot", "Location", "n")
-    plotdata$Location <- factor(plotdata$Location, levels = colnames(input$global.ratios[[1]])[-c(1, ncol(input$global.ratios[[1]]))])
+  plotdata <- suppressMessages(reshape2::melt(the.ratios, id.vars = c("Timeslot")))
+
+  if (col.by == 'group') {
+    colnames(plotdata) <- c("Timeslot", "Group", "n")
+    plotdata$Group <- factor(plotdata$Group, levels = groups)
   } else {
-    if (type == "absolutes") {
-      plotdata <- the.ratios
-    } else {
-      plotdata <- suppressMessages(reshape2::melt(the.ratios[, -ncol(the.ratios)], id.vars = "Timeslot"))
-      colnames(plotdata) <- c("Timeslot", "Group", "n")
-    }
+    colnames(plotdata) <- c("Timeslot", "Location", "n")
+    plotdata$Location <- factor(plotdata$Location, levels = sections)
   }
 
   if (missing(col)) {
-    if (missing(sections)) {
-      if ((ncol(input$global.ratios[[1]]) - 2) <= 8)
-        unique.colours <- as.vector(cbPalette)[1:(ncol(input$global.ratios[[1]]) - 2)]
+    if (col.by == 'group') {
+      if (length(groups) <= 8)
+        unique.colours <- as.vector(cbPalette)[1:length(groups)]
       else
-        unique.colours <- gg_colour_hue(ncol(input$global.ratios[[1]]) - 2)
+        unique.colours <- gg_colour_hue(length(groups))
     } else {
-      if (length(unique(plotdata$Group)) <= 8)
-        unique.colours <- as.vector(cbPalette)[1:length(unique(plotdata$Group))]
+      if (length(sections) <= 8)
+        unique.colours <- as.vector(cbPalette)[1:(length(sections))]
       else
-        unique.colours <- gg_colour_hue(length(unique(plotdata$Group)))
+        unique.colours <- gg_colour_hue(length(sections))
     }
   } else {
-    if (missing(sections)) {
-      if (length(col) < length(unique(plotdata$Location)))
-        warning("Not enough colours supplied in 'col' (", length(col)," supplied and ", length(unique(plotdata$Location)), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
-      unique.colours <- rep(col, length.out = length(unique(plotdata$Location)))
+    if (col.by == 'group') {
+      if (length(col) < length(groups))
+        warning("Not enough colours supplied in 'col' (", length(col)," supplied and ", length(groups), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
+      unique.colours <- rep(col, length.out = length(groups))
     } else {
-      if (length(col) < length(unique(plotdata$Group)))
-        warning("Not enough colours supplied in 'col' (", length(col)," supplied and ", length(unique(plotdata$Group)), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
-      unique.colours <- rep(col, length.out = length(unique(plotdata$Group)))
+      if (length(col) < length(sections))
+        warning("Not enough colours supplied in 'col' (", length(col)," supplied and ", length(sections), " needed). Reusing colours.", immediate. = TRUE, call. = FALSE)
+      unique.colours <- rep(col, length.out = length(sections))
     }
   }
 
-  if (missing(sections))
-    p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = Timeslot, y = n, fill = Location, col = Location))
-  else
+  if (col.by == 'group')
     p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = Timeslot, y = n, fill = Group, col = Group))
+  else
+    p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = Timeslot, y = n, fill = Location, col = Location))
 
-  p <- p + ggplot2::geom_bar(width = ifelse(attributes(the.ratios)$timestep == "days", 86400, 3600), stat = "identity")
+  p <- p + ggplot2::geom_bar(width = ifelse(attributes(input$global.ratios[[1]])$timestep == "days", 86400, 3600), stat = "identity")
   p <- p + ggplot2::theme_bw()
 
-  if (missing(sections) | type == "percentages") {
-    if (ncol(the.ratios) > 3)
-      max.y <- max(apply(the.ratios[, c(-1, -ncol(the.ratios))], 1, sum))
-    else
-      max.y <- max(the.ratios[, 2])
-  } else {
-    max.y <- max(with(the.ratios, aggregate(n, list(Timeslot), sum))$x)
-  }
-
+  max.y <- max(with(plotdata, aggregate(n, list(Timeslot), sum))$x)
   if (type == "absolutes")
     p <- p + ggplot2::scale_y_continuous(limits = c(0,  max.y * 1.05), expand = c(0, 0))
   else
     p <- p + ggplot2::scale_y_continuous(limits = c(0,  max.y), expand = c(0, 0))
+
 
   p <- p + ggplot2::labs(title = title, x = xlab, y = ylab)
 

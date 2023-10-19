@@ -28,10 +28,10 @@
 #' setwd(tempdir())
 #'
 #' # Deploy the example workspace
-#' exampleWorkspace("exampleWorkspace")
+#' exampleWorkspace("migration_example")
 #'
 #' # Move your R session into the example workspace
-#' setwd("exampleWorkspace")
+#' setwd("migration_example")
 #'
 #' # run the migration analysis. Ensure the tz argument
 #' # matches the time zone of the study area and that the
@@ -124,7 +124,9 @@ migration <- function(
   datapack = NULL,
   success.arrays = NULL,
   max.interval = 60,
-  minimum.detections = 2,
+  minimum.detections,
+  min.total.detections = 2,
+  min.per.event = 1,
   start.time = NULL,
   stop.time = NULL,
   speed.method = c("last to first", "last to last"),
@@ -147,13 +149,12 @@ migration <- function(
   GUI = c("needed", "always", "never"),
   save.tables.locally = FALSE,
   print.releases = TRUE,
-  plot.detections.by,
   detections.y.axis = c("auto", "stations", "arrays"))
 {
 
 # check deprecated argument
-  if (!missing(plot.detections.by))
-    stop("'plot.detections.by' has been deprecated. Please use 'detections.y.axis' instead.", call. = FALSE)
+  if (!missing(minimum.detections))
+    stop("'minimum.detections' has been deprecated. Please use 'min.total.detections' and 'min.per.event' instead.", call. = FALSE)
 
 # clean up any lost helpers
   deleteHelpers()
@@ -178,7 +179,8 @@ migration <- function(
 
   aux <- checkArguments(dp = datapack,
                         tz = tz,
-                        minimum.detections = minimum.detections,
+                        min.total.detections = min.total.detections,
+                        min.per.event = min.per.event,
                         max.interval = max.interval,
                         speed.method = speed.method,
                         speed.warning = speed.warning,
@@ -200,9 +202,12 @@ migration <- function(
                         section.order = section.order,
                         detections.y.axis = detections.y.axis)
 
+  min.per.event <- aux$min.per.event
   speed.method <- aux$speed.method
   speed.warning <- aux$speed.warning
   speed.error <- aux$speed.error
+  jump.warning <- aux$jump.warning
+  jump.error <- aux$jump.error
   inactive.warning <- aux$inactive.warning
   inactive.error <- aux$inactive.error
   detections.y.axis <- aux$detections.y.axis
@@ -217,7 +222,8 @@ migration <- function(
     ", datapack = ", ifelse(is.null(datapack), "NULL", deparse(substitute(datapack))),
     ", success.arrays = ", ifelse(is.null(success.arrays), "NULL", paste0("c('", paste(success.arrays, collapse = "', '"), "')")),
     ", max.interval = ", max.interval,
-    ", minimum.detections = ", minimum.detections,
+    ", min.total.detections = ", min.total.detections,
+    ", min.per.event = ", paste0("c(", paste(min.per.event, collapse = ", "), ")"),
     ", start.time = ", ifelse(is.null(start.time), "NULL", paste0("'", start.time, "'")),
     ", stop.time = ", ifelse(is.null(stop.time), "NULL", paste0("'", stop.time, "'")),
     ", speed.method = '", speed.method, "'",
@@ -287,6 +293,7 @@ migration <- function(
   dist.mat <- study.data$dist.mat
   attributes(dist.mat)$speed.method <- speed.method
   detections.list <- study.data$detections.list
+
 # -------------------------------------
 
 # Final quality checks
@@ -331,6 +338,10 @@ migration <- function(
       ifelse(sum(link) > 1, "these arrays are", "this array is"), " not part of the study arrays.")
     }
   }
+
+  # CHECK ISSUE 79
+  checkIssue79(arrays, spatial)
+
 # -------------------------------------
 
 # Discard early detections, if required
@@ -376,14 +387,24 @@ migration <- function(
     do.checkInactiveness <- TRUE
   }
 
-  movement.names <- names(movements)
+  movement.names <- names(movements) # this will be used further down to reinstate the names in the movements list.
 
-  if (any(link <- !override %in% extractSignals(movement.names))) {
+  # clean override based on movements
+  if (is.numeric(override))
+    trigger_override_warning <- any(link <- !override %in% extractSignals(movement.names))
+  else
+    trigger_override_warning <- any(link <- !override %in% movement.names)
+
+  if (trigger_override_warning) {
     appendTo(c("Screen", "Warning", "Report"), paste0("Override has been triggered for ",
       ifelse(sum(link) == 1, "tag ", "tags "), paste(override[link], collapse = ", "), " but ",
       ifelse(sum(link) == 1, "this signal was", "these signals were"), " not detected."))
     override <- override[!link]
   }
+
+  # convert numeric override to full tag override to prevent problems downstream
+  if (is.numeric(override))
+    override <- movement.names[match(override, extractSignals(movement.names))]
 
   movements <- lapply(seq_along(movements), function(i) {
     tag <- names(movements)[i]
@@ -391,10 +412,11 @@ migration <- function(
 
     appendTo("debug", paste0("debug: Checking movement quality for tag ", tag,"."))
 
-    if (is.na(match(extractSignals(tag), override))) {
-      output <- checkMinimumN(movements = movements[[tag]], tag = tag, minimum.detections = minimum.detections, n = counter)
+    if (is.na(match(tag, override))) {
+      output <- checkMinimumN(movements = movements[[tag]], tag = tag, min.total.detections = min.total.detections,
+                               min.per.event = min.per.event[1], n = counter)
 
-      output <- checkUpstream(movements = output, tag = tag, detections = detections.list[[tag]], spatial = spatial,
+      output <- checkFirstDetBackFromRelease(movements = output, tag = tag, detections = detections.list[[tag]], spatial = spatial,
                               bio = bio, arrays = arrays, GUI = GUI, save.tables.locally = save.tables.locally, n = counter)
 
       output <- checkImpassables(movements = output, tag = tag, bio = bio, detections = detections.list[[tag]], n = counter, 
@@ -437,7 +459,11 @@ migration <- function(
     appendTo("debug", paste0("debug: Compiling section movements for tag ", tag,"."))
 
     aux <- sectionMovements(movements = movements[[i]], spatial = spatial, valid.dist = attributes(dist.mat)$valid)
-    if (!is.null(aux)) {
+
+    if (!is.null(aux)) { # interesting... why do I have this here but not on residency? hm...
+      aux <- checkMinimumN(movements = aux, tag = tag, min.total.detections = 0, # don't run the minimum total detections check here.
+                           min.per.event = min.per.event[2], n = counter)
+
       output <- checkLinearity(secmoves = aux, tag = tag, spatial = spatial, arrays = arrays, 
                                GUI = GUI, save.tables.locally = save.tables.locally, n = counter)
       return(output)
@@ -516,7 +542,7 @@ migration <- function(
     release_nodes$Array <- spatial$release.sites$Array[match(release_nodes$Release.site, spatial$release.sites$Standard.name)]
     release_nodes$Combined <- paste(release_nodes[, 1], release_nodes[, 2], sep = ".")
 
-    overall.CJS <- assembleArrayCJS(mat = the.matrices, CJS = CJS.list, arrays = arrays, releases = release_nodes)
+    overall.CJS <- assembleArrayCJS(mat = the.matrices, CJS = CJS.list, arrays = arrays, releases = release_nodes, silent = FALSE)
 
     if (!is.null(replicates)) {
       intra.array.matrices <- getDualMatrices(replicates = replicates, CJS = overall.CJS, spatial = spatial, detections.list = valid.detections)
@@ -622,8 +648,10 @@ migration <- function(
 # ------------
 
 # Print graphics
+  trigger.report.error.message <- TRUE
   if (report) {
     appendTo(c("Screen", "Report"), "M: Producing the report.")
+    on.exit({if (trigger.report.error.message) message("M: Producing the report failed. If you have saved a copy of the results, you can reload them using dataToList().")}, add = TRUE)
 
     if (dir.exists(paste0(tempdir(), "/actel_report_auxiliary_files")))
       unlink(paste0(tempdir(), "/actel_report_auxiliary_files"), recursive = TRUE)
@@ -686,12 +714,10 @@ migration <- function(
       sensor.plots <- NULL
     }
   }
-
-  appendTo("Report", "M: Process finished successfully.")
 # ---------------
 
 # wrap up the txt report
-  appendTo("Report", "\n-------------------")
+  appendTo("Report", "M: Analysis completed!\n\n-------------------")
   
   if (file.exists(paste(tempdir(), "temp_comments.txt", sep = "/")))
     appendTo("Report", paste0("User comments:\n-------------------\n", gsub("\t", ": ", gsub("\r", "", readr::read_file(paste(tempdir(), "temp_comments.txt", sep = "/")))), "-------------------")) # nocov
@@ -699,13 +725,14 @@ migration <- function(
   if (file.exists(paste(tempdir(), "temp_UD.txt", sep = "/")))
     appendTo("Report", paste0("User interventions:\n-------------------\n", gsub("\r", "", readr::read_file(paste(tempdir(), "temp_UD.txt", sep = "/"))), "-------------------")) # nocov
 
-  appendTo("Report", paste0("Function call:\n-------------------\n", the.function.call, "\n-------------------"))
+  if (!is.null(datapack))
+    appendTo("Report", paste0("Preload function call:\n-------------------\n", attributes(datapack)$function_call, "\n-------------------"))
+
+  appendTo("Report", paste0("Migration function call:\n-------------------\n", the.function.call, "\n-------------------"))
 # ------------------
 
 # print html report
-  trigger.report.error.message <- TRUE
   if (report) {
-    on.exit({if (trigger.report.error.message) message("M: Producing the report failed. If you have saved a copy of the results, you can reload them using dataToList().")}, add = TRUE)
     if (file.exists(reportname <- "actel_migration_report.html")) {
       continue <- TRUE
       index <- 1
@@ -766,10 +793,6 @@ migration <- function(
     file.copy(paste(tempdir(), "temp_log.txt", sep = "/"), jobname)
   } # nocov end
 
-  appendTo("Screen", "M: Process finished successfully.")
-
-  finished.unexpectedly <- FALSE
-
   output <- list(detections = detections,
                  valid.detections = valid.detections,
                  spatial = spatial,
@@ -791,6 +814,9 @@ migration <- function(
 
   if (attributes(dist.mat)$valid)
     output$dist.mat <- dist.mat
+
+  appendTo("Screen", "M: Analysis completed!")
+  finished.unexpectedly <- FALSE
 
   return(output)
 }
@@ -978,6 +1004,7 @@ Note:
   : Coloured lines on the outer circle indicate the mean value for each group and the respective ranges show the standard error of the mean. Each group\'s bars sum to 100%. The number of data points in each group is presented between brackets in the legend of each pannel.
   : You can replicate these graphics and edit them as needed using the `plotTimes()` function.
   : The data used in these graphics is stored in the `times` object.
+  : To obtain reports with the legacy linear circular scale, run `options(actel.circular.scale = "linear")` before running your analyses.
 
 <center>
 ', circular.plots,'
@@ -1417,7 +1444,7 @@ assembleOutput <- function(timetable, bio, spatial, dist.mat, tz) {
   appendTo("debug", "Appending comments.")
   if (file.exists(paste0(tempdir(), "/temp_comments.txt"))) { # nocov start
     temp <- read.table(paste0(tempdir(), "/temp_comments.txt"), header = FALSE, sep = "\t")
-    status.df[, "Comments"] <- NA
+    status.df[, "Comments"] <- NA_character_
     for (i in seq_len(nrow(temp))) {
       link <- match(temp[i, 1], status.df$Transmitter)
       if (is.na(status.df$Comments[link])) {

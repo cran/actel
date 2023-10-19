@@ -7,7 +7,7 @@ if (dir.exists("actel_report_auxiliary_files"))
 
 dir.create("actel_report_auxiliary_files")
 
-exampleWorkspace("exampleWorkspace")
+exampleWorkspace("exampleWorkspace", force = TRUE)
 setwd("exampleWorkspace")
 write.csv(example.distances, "distances.csv")
 
@@ -140,6 +140,17 @@ test_that("printEfficiency returns right string when eff. cannot be calculated",
 	
 	output <- printEfficiency(intra.CJS = NULL, type = "residency")
 	expect_equal(output, "Inter-array efficiency could not be calculated. See full log for more details.\n")
+})
+
+
+## printCircular
+
+test_that("printCircular complains if option actel.circular.scale is set but value is not good", {
+	options(actel.circular.scale = "bananas")
+	on.exit(options(actel.circular.scale = NULL))
+
+	expect_warning(x <- explore(tz = "Europe/Copenhagen", report = TRUE),
+		"Option actel.circular.scale was set but value is not recognized (accepted values: 'area', 'linear'). Defaulting back to 'area'.", fixed = TRUE)
 })
 
 setwd("..")

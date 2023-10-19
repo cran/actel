@@ -5,7 +5,7 @@ Sys.setenv(TZ = 'UTC')
 tests.home <- getwd()
 setwd(tempdir())
 
-exampleWorkspace("exampleWorkspace")
+exampleWorkspace("exampleWorkspace", force = TRUE)
 setwd("exampleWorkspace")
 write.csv(example.distances, "distances.csv")
 
@@ -25,14 +25,14 @@ test_that("explore stops when any argument does not make sense", {
 	expect_error(explore(tz = "Europe/Copenhagen", max.interval = -1),
 		"'max.interval' must be positive.", fixed = TRUE)
 	
-	expect_error(explore(tz = "Europe/Copenhagen", minimum.detections = "a"),
-		"'minimum.detections' must be numeric.", fixed = TRUE)
+	expect_error(explore(tz = "Europe/Copenhagen", min.total.detections = "a"),
+		"'min.total.detections' must be numeric.", fixed = TRUE)
 	
-	expect_error(explore(tz = "Europe/Copenhagen", minimum.detections = "1"),
-		"'minimum.detections' must be numeric.", fixed = TRUE)
+	expect_error(explore(tz = "Europe/Copenhagen", min.total.detections = "1"),
+		"'min.total.detections' must be numeric.", fixed = TRUE)
 	
-	expect_error(explore(tz = "Europe/Copenhagen", minimum.detections = -1),
-		"'minimum.detections' must be positive.", fixed = TRUE)
+	expect_error(explore(tz = "Europe/Copenhagen", min.total.detections = -1),
+		"'min.total.detections' must be positive.", fixed = TRUE)
 	
 	expect_error(explore(tz = "Europe/Copenhagen", start.time = 1234),
 		"'start.time' must be in 'yyyy-mm-dd hh:mm:ss' format.", fixed = TRUE)
@@ -78,7 +78,13 @@ test_that("explore stops when any argument does not make sense", {
 	
 	expect_error(explore(tz = "Europe/Copenhagen", jump.error = -1),
 		"'jump.error' must not be lower than 1.", fixed = TRUE)
+
+	expect_warning(explore(tz = "Europe/Copenhagen", jump.warning = 10),
+		"Adjusting default 'jump.error' to match set 'jump.warning'.", fixed = TRUE)
 	
+	expect_warning(explore(tz = "Europe/Copenhagen", jump.error = 1),
+		"Adjusting default 'jump.warning' to match set 'jump.error'.", fixed = TRUE)
+
 	expect_error(explore(tz = "Europe/Copenhagen", jump.error = 1, jump.warning = 10),
 		"'jump.error' must not be lower than 'jump.warning'", fixed = TRUE)
 	
@@ -98,16 +104,15 @@ test_that("explore stops when any argument does not make sense", {
 		"'inactive.error' must not be lower than 'inactive.warning'", fixed = TRUE)
 	
 	expect_error(explore(tz = "Europe/Copenhagen", exclude.tags = 1),
-		"Not all contents in 'exclude.tags' could be recognized as tags (i.e. 'codespace-signal'). Valid examples: 'R64K-1234', A69-1303-1234'", fixed = TRUE)
+		"Not all contents in 'exclude.tags' could be recognized as tags (i.e. 'codespace-signal'). Valid examples: 'R64K-1234', 'A69-1303-1234'", fixed = TRUE)
 	
 	expect_warning(explore(tz = "Europe/Copenhagen", exclude.tags = "ABC-DEF", report = FALSE, GUI = "never"),
 		"The user asked for tag 'ABC-DEF' to be excluded from the analysis, but this tag is not present in the detections.", fixed = TRUE)
 
-	expect_error(explore(tz = "Europe/Copenhagen", override = 1, GUI = "never"),
-		"Some tag signals listed in 'override' (1) are not listed in the biometrics file.", fixed = TRUE)
-	
-	expect_error(explore(tz = "Europe/Copenhagen", override = "ABC-DEF", report = FALSE, GUI = "never"),
-		"'override' must be numeric. Please include only the tag signals in the 'override' argument.", fixed = TRUE)
+	expect_error(
+		expect_warning(explore(tz = "Europe/Copenhagen", override = 1, GUI = "never"),
+			"Override is numeric (i.e. the code space has not been included). Will attempt to identify tags to be excluded based on signal alone.", fixed = TRUE),
+		"Some tags listed in 'override' (1) are not listed in the biometrics file.", fixed = TRUE)
 	
 	expect_warning(explore(tz = "Europe/Copenhagen", override = 4450, report = FALSE, GUI = "never"),
 		"Override has been triggered for tag 4450 but this signal was not detected.", fixed = TRUE)
@@ -121,20 +126,10 @@ test_that("explore stops when any argument does not make sense", {
 	expect_error(explore(tz = "Europe/Copenhagen", detections.y.axis = 1, GUI = "never"),
 		"'detections.y.axis' should be one of 'stations' or 'arrays'", fixed = TRUE)
   
-  aux <- c(
-    length(suppressWarnings(packageDescription("gWidgets2"))),
-    length(suppressWarnings(packageDescription("gWidgets2RGtk2"))),
-    length(suppressWarnings(packageDescription("RGtk2"))))
-  missing.packages <- sapply(aux, function(x) x == 1)
-  if (any(missing.packages)) {
+  if (length(suppressWarnings(packageDescription("gWidgets2tcltk"))) == 1) {
 		expect_warning(explore(tz = "Europe/Copenhagen", report = FALSE),
-      paste0("GUI is set to 'needed' but ",
-        ifelse(sum(missing.packages) == 1, "package '", "packages '"),
-        paste(c("gWidgets2", "gWidgets2RGtk2", "RGtk2")[missing.packages], collapse = "', '"),
-        ifelse(sum(missing.packages) == 1, "' is", "' are"),
-        " not available. Please install ",
-        ifelse(sum(missing.packages) == 1, "it", "them"),
-        " if you intend to run GUI.\n         Disabling GUI (i.e. GUI = 'never') for the current run."), fixed = TRUE)
+      paste0("GUI is set to 'needed' but package 'gWidgets2tcltk' is not available. Please install it if you intend to run GUI.\n         Disabling GUI (i.e. GUI = 'never') for the current run."),
+      fixed = TRUE)
   }
 
 	expect_error(explore(tz = "Europe/Copenhagen", report = "a"),
@@ -155,6 +150,11 @@ test_that("explore stops when any argument does not make sense", {
 # n
 # n
 # n
+# n
+# n
+# n
+# n
+# n
 
 test_that("explore results contains all the expected elements.", {
 	output <- suppressWarnings(explore(tz = 'Europe/Copenhagen', report = FALSE, GUI = "never"))
@@ -167,7 +167,6 @@ test_that("explore results contains all the expected elements.", {
 })
 # n
 # n
-# n
 
 test_that("explore is able to run speed and inactiveness checks.", {
 	output <- suppressWarnings(explore(tz = 'Europe/Copenhagen', report = FALSE, GUI = "never", speed.error = 1000000, inactive.error = 1000000))
@@ -178,10 +177,6 @@ test_that("explore is able to run speed and inactiveness checks.", {
 	expect_false(any(is.na(match(names(output), c('bio', 'detections', 'valid.detections', 'spatial', 'deployments', 'arrays',
     'movements', 'valid.movements', 'times', 'rsp.info')))))
 })
-# n
-# n
-# n
-# n
 # n
 # n
 # n
@@ -200,6 +195,7 @@ test_that("explore can handle multi-sensor data", {
 	xbio$Signal[1] <- "4453|4454"
 	write.csv(xbio, "biometrics.csv", row.names = FALSE)
 	output <- suppressWarnings(explore(tz = 'Europe/Copenhagen', GUI = "never"))
+	expect_true(TRUE) # Dummy test just so it is not considered skipped
 })
 # n
 # n
@@ -221,7 +217,6 @@ test_that("the discard.first argument is working properly", {
 	expect_true(is.na(output$valid.movements[[1]]$Time.travelling[1]))
 	expect_true(is.na(output$valid.movements[[1]]$Average.speed.m.s[1]))
 })
-# n
 # n
 # n
 

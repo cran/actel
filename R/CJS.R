@@ -165,21 +165,30 @@ breakMatricesByArray <- function(m, arrays, type = c("peers", "all"), verbose = 
   recipient <- list()
   for (i in 1:length(arrays)) {
     if ((type == "peers" & !is.null(arrays[[i]]$after.peers)) | (type == "all" & !is.null(arrays[[i]]$all.after))) {
+      
       # find out relevant arrays
       if (type == "peers")
         a.regex <- paste0("^", c(names(arrays)[i], arrays[[i]]$after.peers), "$", collapse = "|")
       else
         a.regex <- paste0("^", c(names(arrays)[i], arrays[[i]]$all.after), "$", collapse = "|")
+      
       # grab only relevant arrays
-      aux  <- lapply(m, function(m_i) m_i[, which(grepl(a.regex, colnames(m_i)))])
+      aux  <- lapply(m, function(m_i) m_i[, which(grepl(a.regex, colnames(m_i))), drop = FALSE])
+      
       # Failsafe in case some tags are released at one of the peers
       keep <- unlist(lapply(m, function(m_i) any(grepl(paste0("^", names(arrays)[i], "$"), colnames(m_i)))))
       aux  <- aux[keep]
+      
+      # Failsafe in case there is only one column left
+      keep <- unlist(lapply(aux, ncol)) > 1
+      aux  <- aux[keep]
+
       # reorder columns if necessary
       aux <- lapply(aux, function(x) {
         peer.cols <- colnames(x)[!grepl(paste0("^", names(arrays)[i], "$"), colnames(x))]
         return(x[, c(names(arrays)[i], peer.cols)])
       })
+
       # Convert peers to single column and add fake start
       aux <- lapply(aux, function(m) {
         if (ncol(m) > 2) {
@@ -188,14 +197,17 @@ breakMatricesByArray <- function(m, arrays, type = c("peers", "all"), verbose = 
         } else {
           colnames(m)[2] <- "AnyPeer"
         }
+
         # The fake start prevents the CJS functions from breaking if the efficiency of the array is 0
         m$FakeStart <- rep(1, nrow(m))
         return(m[, c(ncol(m), 1, (ncol(m) - 1))])
       })
+
       # If all peers are 0, the CJS functions will crash. The same happens if the array is all 0's
       own.zero.check <- unlist(lapply(aux, function(x) sum(x[, 2]) == 0))
       peer.zero.check <- unlist(lapply(aux, function(x) sum(x$AnyPeer) == 0))
       zero.check <- all(own.zero.check) | all(peer.zero.check)
+      
       if (zero.check) {
         if (all(own.zero.check) & verbose) {
           appendTo(c("Screen", "Warning", "Report"), paste0("No tags passed through array ", names(arrays)[i], ". Skipping efficiency estimations for this array."))
@@ -226,7 +238,7 @@ breakMatricesByArray <- function(m, arrays, type = c("peers", "all"), verbose = 
 #'
 #' @keywords internal
 #'
-assembleArrayCJS <- function(mat, CJS, arrays, releases) {
+assembleArrayCJS <- function(mat, CJS, arrays, releases, silent = TRUE) {
   appendTo("debug", "Running assembleArrayCJS.")
   # Compile final objects
   absolutes <- matrix(nrow = 5, ncol = length(arrays))
@@ -263,8 +275,11 @@ assembleArrayCJS <- function(mat, CJS, arrays, releases) {
   fix.peers <- is.na(efficiency)
   for (i in 1:length(arrays)) {
     if (fix.zero[i]) {
-      # fix estimated for arrays with 0 efficiency.
-      absolutes["estimated", i] <- sum(absolutes["estimated", arrays[[i]]$before])
+      # fix estimated for arrays with 0 efficiency. # if any of the before is NA, this will be NA too.
+      if (!silent)
+        appendTo(c("Screen", "Report", "Warning"), paste0("Array '", names(arrays)[i], "' has 0 efficiency. Attempting to round estimated based on peers, if possible."))
+      if (!is.null(arrays[[i]]$before))
+        absolutes["estimated", i] <- sum(absolutes["estimated", arrays[[i]]$before])
     }
     if (fix.peers[i]) {
       # fix absolutes for arrays with no peers
@@ -291,27 +306,40 @@ assembleMatrices <- function(spatial, movements, status.df, arrays, paths, dotma
   temp <- efficiencyMatrix(movements = movements, arrays = arrays, paths = paths, dotmat = dotmat)
   appendTo("debug", "Running assembleMatrices.")
   output <- lapply(temp, function(x) {
-    # sort the rows by the same order as status.df
+    # include transmitters that were never detected
     x <- includeMissing(x = x, status.df = status.df)
-    lowest_signals <- sapply(as.character(status.df$Signal), function(i) min(as.numeric(unlist(strsplit(i, "|", fixed = TRUE)))))
-    link <- sapply(lowest_signals, function(i) grep(paste0("^", i, "$"), rownames(x)))
+    
+    # sort the rows by the same order as status.df (I think these two lines are not needed, but leaving them in just in case)
+    link <- sapply(status.df$Transmitter, function(i) grep(paste0("^", i, "$"), rownames(x)))
     x <- x[link, ]
+
     # split by group*release site combinations
     aux <- split(x, paste0(status.df$Group, ".", status.df$Release.site))
+
     # Re-order
     the.order <- c()
     for (i in unique(status.df$Group)) {
       the.order <- c(the.order, paste0(i, ".", unique(spatial$release.sites$Standard.name)))
     }
     aux <- aux[order(match(names(aux), the.order))]
-    # If the release sites start in different arrays
-    unique.release.arrays <- unique(unlist(sapply(spatial$release.sites$Array, function(x) unlist(strsplit(x, "|", fixed = TRUE)))))
+
+    unique.release.arrays <- unique( # only keep each name once
+                              unlist( # turn output into a string
+                                sapply(spatial$release.sites$Array, function(x) {
+                                    unlist(strsplit(x, "|", fixed = TRUE)) # break arrays by '|'
+                                  })
+                                )
+                              )
+
+    # If the release sites start in different arrays, trim the matrices as needed
     if (length(unique.release.arrays) > 1) {
-      for(i in 1:length(aux)){
-        r <- sapply(spatial$release.sites$Standard.name, function(x) grepl(x, names(aux)[i]))
-        if(sum(r) > 1)
+      for(i in 1:length(aux)){ # for each matrix, find the corresponding release site.
+        the_release_site <- sapply(spatial$release.sites$Standard.name, function(x) grepl(paste0(".", x, "$"), names(aux)[i])) 
+        if(sum(the_release_site) > 1) # if there is more than one matching release site, stop.
           stop("Multiple release sites match the matrix name. Make sure that the release sites' names are not contained within the animal groups or within themselves.\n")
-        the.col <- min(which(grepl(spatial$release.sites$Array[r], colnames(aux[[i]]))))
+        # else, find which is the first column to keep. This is tricky for multi-branch sites...
+        the.col <- min(which(grepl(spatial$release.sites$Array[the_release_site], colnames(aux[[i]]))))
+        # then keep only the relevant columns
         aux[[i]] <- aux[[i]][, c(1, the.col:ncol(aux[[i]]))]
       }
     }
@@ -587,7 +615,7 @@ efficiencyMatrix <- function(movements, arrays, paths, dotmat) {
   appendTo("debug", "Starting efficiencyMatrix.")
   max.ef <- as.data.frame(matrix(ncol = length(arrays) + 1, nrow = length(movements)))
   colnames(max.ef) <- c("Release", names(arrays))
-  rownames(max.ef) <- extractSignals(names(movements))
+  rownames(max.ef) <- names(movements)
   max.ef[is.na(max.ef)] = 0
   max.ef$Release = 1
   min.ef <- max.ef
@@ -605,8 +633,8 @@ efficiencyMatrix <- function(movements, arrays, paths, dotmat) {
         if (!is.null(aux))
           max.aux[match(aux, names(max.aux))] <- 1
       }
-      max.ef[extractSignals(tag), ] <<- max.aux
-      min.ef[extractSignals(tag), ] <<- min.aux
+      max.ef[tag, ] <<- max.aux
+      min.ef[tag, ] <<- min.aux
     }
   })
   return(list(maxmat = max.ef, minmat = min.ef))
@@ -706,16 +734,9 @@ blameArrays <- function(from, to, paths) {
 #'
 includeMissing <- function(x, status.df){
   appendTo("debug", "Running includeMissing.")
-  aux <- as.character(status.df[
-    -match(rownames(x),
-      sapply(as.character(status.df$Signal),
-        function(i) min(as.numeric(unlist(strsplit(i, "|", fixed = TRUE)))))
-      ), "Signal"])
-  include <- as.character(sapply(aux, function(i) {
-    min(as.numeric(unlist(strsplit(i, "|", fixed = TRUE))))
-  }))
-  x[include, ] <- 0
-  x[include, 1] <- 1
+  missing_transmitters <- status.df$Transmitter[!status.df$Transmitter %in% rownames(x)]
+  x[missing_transmitters, ] <- 0
+  x[missing_transmitters, 1] <- 1
   return(x)
 }
 

@@ -78,15 +78,6 @@ test_that("combine works as expected.", {
 	expect_equal(combine(list(A = c(NA, 1, NA), B = c(2, NA, 2))), c(2, 1, 2))
 })
 
-test_that("roundUp works as expected.", {
-	expect_equal(roundUp(153), 160)
-	expect_equal(roundUp(15.3, to = 1), 16)
-	expect_equal(roundUp(15.3, to = 2), 16)
-	expect_equal(roundUp(14.2, to = 1), 15)
-	expect_equal(roundUp(14.1, to = 2), 16)
-	expect_equal(roundUp(list(A = 1:5, B = 10.3:13.3), to = 1), list(A = 1:5, B = 11:14))
-})
-
 test_that("appendTo stores comments.", {
 	appendTo("Comment", "test comment", "Test tag")
 	expect_true(file.exists("temp_comments.txt"))
@@ -143,9 +134,13 @@ explore(tz = 'Europe/Copenhagen', datapack = NULL, max.interval = 60, minimum.de
 -------------------
 ", fill = TRUE)	
 	sink()
-	expect_error(recoverLog(), "Please state the name of the output file")	
+	expect_warning(recoverLog(), "'file' argument is missing. Attempting to save log to 'actel_job_log.txt'. To specify a different target, use the 'file' argument.")	
+	expect_true(file.exists("actel_job_log.txt"))
+
 	recoverLog("test.txt")
 	expect_true(file.exists("test.txt"))
+
+	file.remove("actel_job_log.txt")
 	file.remove("test.txt")
 	file.remove("latest_actel_error_log.txt")
 })
